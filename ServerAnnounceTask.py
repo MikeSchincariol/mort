@@ -1,6 +1,8 @@
 import threading
 import socket
 import time
+import random
+import string
 
 
 class ServerAnnounceTask(threading.Thread):
@@ -42,7 +44,6 @@ class ServerAnnounceTask(threading.Thread):
         """
         Handles constructing an announce message and sending it.
         Then pauses a set amount of time before sending another message.
-        :return:
         """
         while True:
             self.sock.sendto(self.msg.encode('utf8'), ("<broadcast>", 42124))
@@ -50,6 +51,20 @@ class ServerAnnounceTask(threading.Thread):
 
 
 if __name__ == "__main__":
-    task = ServerAnnounceTask('test-session_server', '192.168.43.12', '23234')
+    # For testing purposes, each time this thread is started as the
+    # main program, kick off a server with a random information
+    # This will allow multiple announce tasks to be started, each
+    # with their own name, that can be used to simultanously announce
+    # to a launcher.
+    random_hostname = "test_session_server-"
+    for c in range(0, 8):
+        random_hostname += random.choice((string.ascii_letters + string.digits))
+
+    random_ip_address = "192.168.{0}.{1}".format(random.randint(1, 254),
+                                                 random.randint(1, 254))
+
+    random_port = random.randint(42124, 59999)
+
+    task = ServerAnnounceTask(random_hostname, random_ip_address, random_port)
     task.start()
     task.join()

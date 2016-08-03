@@ -36,7 +36,7 @@ def startup():
             raise
 
     # Start a thread to periodically clean the list of session-servers to
-    # remove those that haven't been heard from in a while.from
+    # remove those that haven't been heard from in a while.
     purge_task = ServerPurgeTask.ServerPurgeTask(known_servers, known_servers_lock)
     purge_task.start()
 

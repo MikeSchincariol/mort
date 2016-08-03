@@ -1,5 +1,4 @@
 import threading
-import socket
 import time
 import datetime
 
@@ -8,12 +7,13 @@ class ServerPurgeTask(threading.Thread):
     """
     A class that runs as a thread to clean out session-servers from the
     list of known session-servers if an announce message hasn't been
-    received within a specific time interval.
+    received within a specific time interval from a session-server.
     """
 
     def __init__(self, known_servers, known_servers_lock):
         """
         Class constructor
+
         :param known_servers: A list of session-servers to iterate over.
         :param known_servers_lock: A threading.Lock object related to the known-servers list.
         """
@@ -27,7 +27,6 @@ class ServerPurgeTask(threading.Thread):
         self.known_servers_lock = known_servers_lock
 
 
-
     def run(self):
         """
         Handles iterating over the known_servers list and purging session-servers
@@ -35,6 +34,8 @@ class ServerPurgeTask(threading.Thread):
         :return:
         """
         while True:
+            # Grab the lock before doing anything with the list since the list
+            # is shared between threads.
             with self.known_servers_lock:
                 for server in self.known_servers[:]:
                     # If we haven't seen an announce message from the server in
