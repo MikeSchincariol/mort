@@ -48,6 +48,7 @@ def startup():
     sock.setblocking(False)
     sock.listen(5)
 
+    announce_task.join()
     # Enter the service loop
     conn, remote_addr = sock.accept()
     print ("Accepted connection from: {}".format(remote_addr))

@@ -13,9 +13,9 @@ class ServerAnnounceTask(threading.Thread):
         """
         Class constructor
 
-        :param announce_hostname: The hostname of the session server to announce.
-        :param announce_ip_address: The IP address string of the session server to announce.
-        :param announce_port: The port the session-server is listening on.
+        :param announce_hostname: The string hostname of the session server to announce.
+        :param announce_ip_address: The string IP address of the session server to announce.
+        :param announce_port: The integer port the session-server is listening on.
         """
         # Give a name to this thread and make it a daemon so it
         # doesn't prevent the caller from exiting.
@@ -26,10 +26,10 @@ class ServerAnnounceTask(threading.Thread):
         self.hostname = announce_hostname
         self.port = announce_port
         self.msg = ("msg_type:session_server_announce\n"
-                    "ip_address:{0}\n"
-                    "hostname:{1}\n"
-                    "port:{2}\n".format(self.ip_address,
-                                        self.hostname,
+                    "hostname:{0}\n"
+                    "ip_address:{1}\n"
+                    "port:{2}\n".format(self.hostname,
+                                        self.ip_address,
                                         self.port))
 
         # Get a persistent UDP socket for sending the messages
