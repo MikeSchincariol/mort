@@ -12,41 +12,50 @@ import logging.handlers
 import SessionServerInfo
 import ServerPurgeTask
 
-# Configure a log file, to write log messages into, that auto-rotates when
-# it reaches a certain size.
-rotating_log_handler = logging.handlers.RotatingFileHandler(filename='mort_session_launcher.log',
-                                                            mode='a',
-                                                            maxBytes=1E6,
-                                                            backupCount=3)
 
-stdout_log_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_log_handler.setLevel(logging.DEBUG)
+def main():
+    """
 
-stderr_log_handler = logging.StreamHandler(stream=sys.stderr)
-stderr_log_handler.setLevel(logging.ERROR)
+    :return:
+    """
 
-logging.basicConfig(format="{asctime} :{levelname}: {name}({lineno}) - {message}",
-                    style="{",
-                    level=logging.DEBUG,
-                    handlers=[stdout_log_handler, stderr_log_handler, rotating_log_handler])
-log = logging.getLogger("mort_session_launcher")
+    # Configure a log file, to write log messages into, that auto-rotates when
+    # it reaches a certain size.
+    rotating_log_handler = logging.handlers.RotatingFileHandler(filename='mort_session_launcher.log',
+                                                                mode='a',
+                                                                maxBytes=1E6,
+                                                                backupCount=3)
+    # Configure a stdout log handler to print all messages
+    stdout_log_handler = logging.StreamHandler(stream=sys.stdout)
+    stdout_log_handler.setLevel(logging.DEBUG)
 
-log.info("")
-log.info("--------------------------------------------------------------------------------")
-log.info("Mort session-launcher starting up...")
+    # Configure a stderr log handler to print only ERROR messages and abve
+    stderr_log_handler = logging.StreamHandler(stream=sys.stderr)
+    stderr_log_handler.setLevel(logging.ERROR)
 
-# A list of session-servers already seen and a lock to use
-# to arbitrate access from different threads
-known_servers = []
-known_servers_lock = threading.Lock()
+    logging.basicConfig(format="{asctime:11} :{levelname:10}: {name:22}({lineno:4}) - {message}",
+                        style="{",
+                        level=logging.DEBUG,
+                        handlers=[stdout_log_handler, stderr_log_handler, rotating_log_handler])
 
-# A socket to watch for session-server announce messages
-announce_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-announce_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-announce_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    # Get a new logger to use
+    log = logging.getLogger("mort_session_launcher")
 
+    # Print a startup banner to mark the beginning of logging
+    log.info("")
+    log.info("--------------------------------------------------------------------------------")
+    log.info("Mort session-launcher starting up...")
 
-def startup():
+    # A list of session-servers already seen and a lock to use
+    # to arbitrate access from different threads
+    known_servers = []
+    known_servers_lock = threading.Lock()
+
+    # A socket to watch for session-server announce messages
+    announce_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    announce_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    announce_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
     # Setup the announce socket to watch for server announce messages.
     try:
         announce_sock.bind(('<broadcast>', 42124))
@@ -64,8 +73,10 @@ def startup():
     purge_task.start()
 
     # Temporary thread to show server list repeatedly each second
-    list_task = threading.Thread(None, target=print_session_server_list)
-    list_task.start()
+    # list_task = threading.Thread(None,
+    #                              target=print_session_server_list,
+    #                              args=(known_servers, known_servers_lock))
+    # list_task.start()
 
     # Setup keyboard input....
 
@@ -75,18 +86,24 @@ def startup():
         robj, wobj, xobj = select.select([announce_sock], [], [])
         for obj in robj:
             if obj == announce_sock:
-                handle_server_announce_msg()
+                handle_server_announce_msg(announce_sock, known_servers, known_servers_lock)
             else:
                 pass
 
 
-def handle_server_announce_msg():
+def handle_server_announce_msg(announce_sock, known_servers, known_servers_lock):
     """
 
+    :param announce_sock:
+    :param known_servers:
+    :param known_servers_lock:
     :return:
     """
+    # Get the logger to use
+    log = logging.getLogger("mort_session_launcher")
+
     # Read the packet from the socket.
-    msg = announce_sock.recv(4096)
+    msg, remote_addr = announce_sock.recvfrom(4096)
     msg = msg.decode('utf8')
 
     # Break the message down into its key/value pairs
@@ -119,25 +136,38 @@ def handle_server_announce_msg():
                     log.info("Added host: {0} ({1}:{2})".format(new_server.hostname,
                                                                 new_server.ip_address,
                                                                 new_server.port))
-
         else:
-            # :TODO: Improve information by including sending server/port that issued
-            #        the invalid message
-            print("Invalid session server announce message. Discarding. \n")
+            # Discard message; not a "session_server_announce" message
+            msg = ("Invalid session server announce message from {0}:{1}."
+                   " Invalid msg_type value."
+                   " Discarding".format(remote_addr[0],
+                                        remote_addr[1]))
+            log.warning(msg)
     else:
-        # :TODO: Improve information by including sending server/port that issued
-        #        the invalid message
-        print("Invalid session server announce message. Discarding. \n")
+        # Discard message; no msg_type field found.
+        msg = ("Invalid session server announce message from {0}:{1}."
+               " Missing msg_type field."
+               " Discarding".format(remote_addr[0],
+                                    remote_addr[1]))
+        log.warning(msg)
 
 
+def print_session_server_list(known_servers, known_servers_lock):
+    """
 
+    :param known_servers:
+    :param known_servers_lock:
+    :return:
+    """
+    # Get the logger to use
+    log = logging.getLogger("mort_session_launcher")
 
-def print_session_server_list():
+    # Loop over the known session-servers and print out their details.
     while True:
         with known_servers_lock:
-            print ("Session Server Listing @ {}\n".format(datetime.datetime.now()))
+            log.info("Session Server Listing @ {}\n".format(datetime.datetime.now()))
             for server in known_servers:
-                print("\tServer: {0} ({1}:{2})\n".format(server.hostname,
+                log.info("\tServer: {0} ({1}:{2})\n".format(server.hostname,
                                                          server.ip_address,
                                                          server.port))
 
@@ -146,4 +176,4 @@ def print_session_server_list():
 
 
 if __name__ == "__main__":
-    startup()
+    main()

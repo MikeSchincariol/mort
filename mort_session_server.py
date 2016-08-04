@@ -11,15 +11,18 @@ import ServerAnnounceTask
 # Configure a log file, to write log messages into, that auto-rotates when
 # it reaches a certain size.
 rotating_log_handler = logging.handlers.RotatingFileHandler(filename='mort_session_server.log',
-                                                   mode='a',
-                                                   maxBytes=1E6,
-                                                   backupCount=3)
-logging.basicConfig(format="{asctime} :{levelname}: {name}({lineno}) - {message}",
+                                                            mode='a',
+                                                            maxBytes=1E6,
+                                                            backupCount=3)
+logging.basicConfig(format="{asctime:11} :{levelname:10}: {name:22}({lineno:4}) - {message}",
                     style="{",
                     level=logging.DEBUG,
                     handlers=[rotating_log_handler])
+
+# Get a new logger to use
 log = logging.getLogger("mort_session_server")
 
+# Print a startup banner to mark the beginning of logging
 log.info("")
 log.info("--------------------------------------------------------------------------------")
 log.info("Mort session-server starting up...")
@@ -54,7 +57,7 @@ while True:
                 raise
     else:
         log.critical("Could not find an open port in the range 42124 to 59999.")
-        log.critical("Session server exiting.")
+        log.critical(" Session server exiting.")
         sys.exit(1)
 
 # Start the session-server announce thread
