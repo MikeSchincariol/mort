@@ -1,6 +1,7 @@
 import threading
 import time
 import datetime
+import logging
 
 
 class ServerPurgeTask(threading.Thread):
@@ -20,6 +21,10 @@ class ServerPurgeTask(threading.Thread):
         # Give a name to this thread and make it a daemon so it
         # doesn't prevent the caller from exiting.
         super().__init__(name="purge_thread", daemon=True)
+
+        # Configure logging
+        self.log = logging.getLogger("ServerPurgeTask")
+        self.log.info("Mort ServerPurgeTask starting up...")
 
         # Store the references to the known_servers list and it's associated
         # lock for use later.
@@ -43,6 +48,9 @@ class ServerPurgeTask(threading.Thread):
                     delta = datetime.datetime.now() - server.last_seen
                     if delta.seconds > 30:
                         self.known_servers.remove(server)
-
+                        self.log.info("Removed host: {0} ({1}:{2}) last seen: {3}".format(server.hostname,
+                                                                                          server.ip_address,
+                                                                                          server.port,
+                                                                                          server.last_seen))
             # Chill for a bit before checking again...
             time.sleep(10)

@@ -3,6 +3,7 @@ import socket
 import time
 import random
 import string
+import logging
 
 
 class ServerAnnounceTask(threading.Thread):
@@ -23,6 +24,10 @@ class ServerAnnounceTask(threading.Thread):
         # doesn't prevent the caller from exiting.
         super().__init__(name="announce_thread", daemon=True)
 
+        # Configure logging
+        self.log = logging.getLogger("ServerAnnounceTask")
+        self.log.info("Mort ServerAnnounceTask starting up...")
+
         # Store up the data for the announce message
         self.ip_address = announce_ip_address
         self.hostname = announce_hostname
@@ -35,9 +40,15 @@ class ServerAnnounceTask(threading.Thread):
                                         self.port))
 
         # Get a persistent UDP socket for sending the messages
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        except OSError as ex:
+            msg = ("Unable to create broadcast socket."
+                   " Error No: {0}"
+                   " Error Msg: {1}".format(ex.errno, ex.strerror))
+            self.log.critical(msg)
 
 
     def run(self):
@@ -46,8 +57,15 @@ class ServerAnnounceTask(threading.Thread):
         Then pauses a set amount of time before sending another message.
         """
         while True:
-            self.sock.sendto(self.msg.encode('utf8'), ("<broadcast>", 42124))
-            time.sleep(10)
+            try:
+                self.sock.sendto(self.msg.encode('utf8'), ("<broadcast>", 42124))
+            except OSError as ex:
+                msg = ("Unable to send session-server announce message."
+                       " Error No: {0}"
+                       " Error Msg: {1}".format(ex.errno, ex.strerror))
+                self.log.critical(msg)
+            finally:
+                time.sleep(10)
 
 
 if __name__ == "__main__":

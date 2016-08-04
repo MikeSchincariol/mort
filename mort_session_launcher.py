@@ -6,11 +6,34 @@ import time
 import datetime
 import threading
 import signal
+import logging
+import logging.handlers
 
 import SessionServerInfo
 import ServerPurgeTask
 
-# Some global variables...
+# Configure a log file, to write log messages into, that auto-rotates when
+# it reaches a certain size.
+rotating_log_handler = logging.handlers.RotatingFileHandler(filename='mort_session_launcher.log',
+                                                            mode='a',
+                                                            maxBytes=1E6,
+                                                            backupCount=3)
+
+stdout_log_handler = logging.StreamHandler(stream=sys.stdout)
+stdout_log_handler.setLevel(logging.DEBUG)
+
+stderr_log_handler = logging.StreamHandler(stream=sys.stderr)
+stderr_log_handler.setLevel(logging.ERROR)
+
+logging.basicConfig(format="{asctime} :{levelname}: {name}({lineno}) - {message}",
+                    style="{",
+                    level=logging.DEBUG,
+                    handlers=[stdout_log_handler, stderr_log_handler, rotating_log_handler])
+log = logging.getLogger("mort_session_launcher")
+
+log.info("")
+log.info("--------------------------------------------------------------------------------")
+log.info("Mort session-launcher starting up...")
 
 # A list of session-servers already seen and a lock to use
 # to arbitrate access from different threads
@@ -111,9 +134,9 @@ def print_session_server_list():
         with known_servers_lock:
             print ("Session Server Listing @ {}\n".format(datetime.datetime.now()))
             for server in known_servers:
-                print("\tHostname: {0}  IP: {1}  Port: {2}\n".format(server.hostname,
-                                                                     server.ip_address,
-                                                                     server.port))
+                print("\tServer: {0} ({1}:{2})\n".format(server.hostname,
+                                                         server.ip_address,
+                                                         server.port))
 
         time.sleep(1)
 
