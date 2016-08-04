@@ -116,6 +116,9 @@ def handle_server_announce_msg():
                                                                      int(msg_fields["port"]),
                                                                      datetime.datetime.now())
                     known_servers.append(new_server)
+                    log.info("Added host: {0} ({1}:{2})".format(new_server.hostname,
+                                                                new_server.ip_address,
+                                                                new_server.port))
 
         else:
             # :TODO: Improve information by including sending server/port that issued
