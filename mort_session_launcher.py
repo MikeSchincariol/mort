@@ -1,15 +1,11 @@
-import sys
-import socket
-import errno
-import select
-import time
-import datetime
 import threading
-import signal
 import logging
 import logging.handlers
+import queue
+from tkinter import *
+from tkinter import ttk
 
-import SessionServerInfo
+import LauncherAnnounceTask
 import ServerPurgeTask
 
 
@@ -24,22 +20,113 @@ def main():
     rotating_log_handler = logging.handlers.RotatingFileHandler(filename='mort_session_launcher.log',
                                                                 mode='a',
                                                                 maxBytes=1E6,
-                                                                backupCount=3)
-    # Configure a stdout log handler to print all messages
+                                                                backupCount=3)  # Configure a stdout log handler to print all messages
     stdout_log_handler = logging.StreamHandler(stream=sys.stdout)
     stdout_log_handler.setLevel(logging.DEBUG)
 
-    # Configure a stderr log handler to print only ERROR messages and abve
+    # Configure a stderr log handler to print only ERROR messages and above
     stderr_log_handler = logging.StreamHandler(stream=sys.stderr)
     stderr_log_handler.setLevel(logging.ERROR)
+
+    # Configure a queue log handler to print all messages to the GUI log box
+    log_queue = queue.Queue()
+    queue_log_handler = logging.handlers.QueueHandler(log_queue)
+    queue_log_handler.setLevel(logging.DEBUG)
 
     logging.basicConfig(format="{asctime:11} :{levelname:10}: {name:22}({lineno:4}) - {message}",
                         style="{",
                         level=logging.DEBUG,
-                        handlers=[stdout_log_handler, stderr_log_handler, rotating_log_handler])
+                        handlers=[stdout_log_handler,
+                                  stderr_log_handler,
+                                  rotating_log_handler,
+                                  queue_log_handler])
 
     # Get a new logger to use
     log = logging.getLogger("mort_session_launcher")
+
+
+    # Create the GUI widgets
+    root = Tk()
+    root.title("Mort VNC Session Launcher")
+    root.grid()
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(0, weight=1)
+
+    size_grip = ttk.Sizegrip(root)
+    size_grip.grid(column=999, row=999, sticky=(S, W))
+
+    v_panes = ttk.PanedWindow(root, orient='vertical')
+    v_panes.grid(column=0, row=0, sticky=(N, S, E, W))
+    v_panes.columnconfigure(0, weight=1)
+    v_panes.rowconfigure(0, weight=1)
+
+    # :WARN: PanedWindow's are also geometry managers, so, don't
+    #        grid any panes that are added to the PanedWindow
+    #        instance (even if the newly added pane is itself a
+    #        PaneWindow instance).
+
+    h_panes0 = ttk.PanedWindow(v_panes, orient='horizontal')
+    v_panes.add(h_panes0, weight=1)
+    h_panes0.columnconfigure(0, weight=1)
+    h_panes0.rowconfigure(0, weight=1)
+
+    session_servers_pane = ttk.LabelFrame(h_panes0,
+                                          text='Session Servers',
+                                          width=200,
+                                          height=100)
+    session_servers_pane.columnconfigure(0, weight=1)
+    session_servers_pane.rowconfigure(0, weight=1)
+    h_panes0.add(session_servers_pane, weight=1)
+
+    active_sessions_pane = ttk.LabelFrame(h_panes0,
+                                          text='Active Sessions',
+                                          width=200,
+                                          height=100)
+    active_sessions_pane.columnconfigure(0, weight=1)
+    active_sessions_pane.rowconfigure(0, weight=1)
+
+    h_panes0.add(active_sessions_pane, weight=1)
+
+    registered_sessions_pane = ttk.LabelFrame(h_panes0,
+                                              text='Registered Sessions',
+                                              width=200,
+                                              height=100)
+    registered_sessions_pane.columnconfigure(0, weight=1)
+    registered_sessions_pane.rowconfigure(0, weight=1)
+    h_panes0.add(registered_sessions_pane, weight=1)
+
+    session_server_tv = ttk.Treeview(session_servers_pane)
+    session_server_tv.grid(column=0, row=0, sticky=(N, S, E, W))
+    session_server_tv.insert('', 'end', "item0", text='First Item')
+
+    active_sessions_tv = ttk.Treeview(active_sessions_pane)
+    active_sessions_tv.grid(column=0, row=0, sticky=(N, S, E, W))
+    active_sessions_tv.insert('', 'end', "item0", text='First Item')
+
+    registered_sessions_tv = ttk.Treeview(registered_sessions_pane)
+    registered_sessions_tv.grid(column=0, row=0, sticky=(N, S, E, W))
+    registered_sessions_tv.insert('', 'end', "item0", text='First Item')
+
+    logbox_pane = ttk.LabelFrame(v_panes,
+                                 text='Log Box',
+                                 width=600,
+                                 height=100)
+    logbox_pane.columnconfigure(0, weight=1)
+    logbox_pane.rowconfigure(0, weight=1)
+    v_panes.add(logbox_pane, weight=1)
+    logbox = Text(logbox_pane)
+    logbox.grid(column=0, row=0, sticky=(N, E, S, W))
+    logbox.configure(wrap="none")
+
+    log_vscroll = ttk.Scrollbar(logbox_pane, orient='vertical', command=logbox.yview)
+    log_vscroll.grid(column=1, row=0, sticky=(N, S))
+    logbox.configure(yscrollcommand=log_vscroll.set)
+
+    log_hscroll = ttk.Scrollbar(logbox_pane, orient='horizontal', command=logbox.xview)
+    log_hscroll.grid(column=0, row=1, sticky=(E, W))
+    logbox.configure(xscrollcommand=log_hscroll.set)
+
+
 
     # Print a startup banner to mark the beginning of logging
     log.info("")
@@ -51,128 +138,36 @@ def main():
     known_servers = []
     known_servers_lock = threading.Lock()
 
-    # A socket to watch for session-server announce messages
-    announce_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    announce_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    announce_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-    # Setup the announce socket to watch for server announce messages.
-    try:
-        announce_sock.bind(('<broadcast>', 42124))
-    except OSError as ex:
-        if ex.errno == errno.EADDRINUSE:
-            print("Could not open a socket on <broadcast>:42124 as it is already in use.\n")
-            print("Session launcher exiting.\n")
-            sys.exit(1)
-        else:
-            raise
+    # Start a thread to handle announce messages from the session-servers
+    announce_task = LauncherAnnounceTask.LauncherAnnounceTask(known_servers, known_servers_lock)
+    announce_task.start()
 
     # Start a thread to periodically clean the list of session-servers to
     # remove those that haven't been heard from in a while.
     purge_task = ServerPurgeTask.ServerPurgeTask(known_servers, known_servers_lock)
     purge_task.start()
 
-    # Temporary thread to show server list repeatedly each second
-    # list_task = threading.Thread(None,
-    #                              target=print_session_server_list,
-    #                              args=(known_servers, known_servers_lock))
-    # list_task.start()
-
-    # Setup keyboard input....
-
-
-    # Enter the main event loop to wait for keyboard or socket events.
-    while True:
-        robj, wobj, xobj = select.select([announce_sock], [], [])
-        for obj in robj:
-            if obj == announce_sock:
-                handle_server_announce_msg(announce_sock, known_servers, known_servers_lock)
-            else:
-                pass
+    # Start a thread to update the GUI logbox when new messages are sent to it's
+    # queue
+    logbox_update_task = threading.Thread(target=update_logbox_task,
+                                          name="logbox_update_task",
+                                          args=(log_queue, logbox))
+    logbox_update_task.start()
 
 
-def handle_server_announce_msg(announce_sock, known_servers, known_servers_lock):
+    # Start Tk's mainloop to wait for GUI events
+    root.mainloop()
+
+def update_logbox_task(log_queue, logbox_widget):
     """
 
-    :param announce_sock:
-    :param known_servers:
-    :param known_servers_lock:
+    :param log_queue:
+    :param logbox_widget:
     :return:
     """
-    # Get the logger to use
-    log = logging.getLogger("mort_session_launcher")
-
-    # Read the packet from the socket.
-    msg, remote_addr = announce_sock.recvfrom(4096)
-    msg = msg.decode('utf8')
-
-    # Break the message down into its key/value pairs
-    msg_lines = msg.splitlines()
-    msg_fields = {}
-    for msg_line in msg_lines:
-        msg_field = msg_line.split(':')
-        msg_fields[msg_field[0]] = msg_field[1]
-
-    # Check for the correct message type. If this isn't a server-announce
-    # message then discard it and move on.
-    if "msg_type" in msg_fields.keys():
-        if msg_fields["msg_type"] == "session_server_announce":
-            with known_servers_lock:
-                for known_server in known_servers:
-                    if known_server.ip_address == msg_fields["ip_address"]:
-                        # We've seen this server before. Update its information in
-                        # case it has changed
-                        known_server.hostname = msg_fields["hostname"]
-                        known_server.port = int(msg_fields["port"])
-                        known_server.last_seen = datetime.datetime.now()
-                        break
-                else:
-                    # Server is new so add it to the known_servers list.
-                    new_server = SessionServerInfo.SessionServerInfo(msg_fields["hostname"],
-                                                                     msg_fields["ip_address"],
-                                                                     int(msg_fields["port"]),
-                                                                     datetime.datetime.now())
-                    known_servers.append(new_server)
-                    log.info("Added host: {0} ({1}:{2})".format(new_server.hostname,
-                                                                new_server.ip_address,
-                                                                new_server.port))
-        else:
-            # Discard message; not a "session_server_announce" message
-            msg = ("Invalid session server announce message from {0}:{1}."
-                   " Invalid msg_type value."
-                   " Discarding".format(remote_addr[0],
-                                        remote_addr[1]))
-            log.warning(msg)
-    else:
-        # Discard message; no msg_type field found.
-        msg = ("Invalid session server announce message from {0}:{1}."
-               " Missing msg_type field."
-               " Discarding".format(remote_addr[0],
-                                    remote_addr[1]))
-        log.warning(msg)
-
-
-def print_session_server_list(known_servers, known_servers_lock):
-    """
-
-    :param known_servers:
-    :param known_servers_lock:
-    :return:
-    """
-    # Get the logger to use
-    log = logging.getLogger("mort_session_launcher")
-
-    # Loop over the known session-servers and print out their details.
     while True:
-        with known_servers_lock:
-            log.info("Session Server Listing @ {}\n".format(datetime.datetime.now()))
-            for server in known_servers:
-                log.info("\tServer: {0} ({1}:{2})\n".format(server.hostname,
-                                                         server.ip_address,
-                                                         server.port))
-
-        time.sleep(1)
-
+        item = log_queue.get()
+        logbox_widget.insert('end', item.msg+"\n")
 
 
 if __name__ == "__main__":

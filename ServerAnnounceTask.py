@@ -49,6 +49,7 @@ class ServerAnnounceTask(threading.Thread):
                    " Error No: {0}"
                    " Error Msg: {1}".format(ex.errno, ex.strerror))
             self.log.critical(msg)
+            raise
 
 
     def run(self):
