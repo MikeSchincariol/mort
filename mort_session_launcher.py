@@ -1,9 +1,11 @@
 import threading
 import logging
 import logging.handlers
+import LogFilter
 import queue
 from tkinter import *
 from tkinter import ttk
+from PIL import ImageTk, Image
 
 import SessionServerList
 import LauncherAnnounceTask
@@ -16,23 +18,32 @@ def main():
     :return:
     """
 
+    # Configure a log filter to dissallow messages from the PIL module
+    pil_log_filter = LogFilter.Filter("PIL")
+
     # Configure a log file, to write log messages into, that auto-rotates when
     # it reaches a certain size.
     rotating_log_handler = logging.handlers.RotatingFileHandler(filename='mort_session_launcher.log',
                                                                 mode='a',
                                                                 maxBytes=1E6,
-                                                                backupCount=3)  # Configure a stdout log handler to print all messages
+                                                                backupCount=3)
+    rotating_log_handler.addFilter(pil_log_filter)
+
+    # Configure a stdout log handler to print all messages
     stdout_log_handler = logging.StreamHandler(stream=sys.stdout)
     stdout_log_handler.setLevel(logging.DEBUG)
+    stdout_log_handler.addFilter(pil_log_filter)
 
     # Configure a stderr log handler to print only ERROR messages and above
     stderr_log_handler = logging.StreamHandler(stream=sys.stderr)
     stderr_log_handler.setLevel(logging.ERROR)
+    stderr_log_handler.addFilter(pil_log_filter)
 
     # Configure a queue log handler to print all messages to the GUI log box
     log_queue = queue.Queue()
     queue_log_handler = logging.handlers.QueueHandler(log_queue)
     queue_log_handler.setLevel(logging.DEBUG)
+    queue_log_handler.addFilter(pil_log_filter)
 
     logging.basicConfig(format="{asctime:11} :{levelname:10}: {name:22}({lineno:4}) - {message}",
                         style="{",
@@ -99,8 +110,8 @@ def main():
     session_server_tv = ttk.Treeview(session_servers_pane)
     session_server_tv.grid(column=0, row=0, sticky=(N, S, E, W))
     session_server_tv["columns"] = ("Hostname", "IP Address", "Port")
-    session_server_tv.column(column="#0", anchor="center", minwidth=40, stretch=False, width=40)
-    session_server_tv.heading(column="#0", text="Idx")
+    session_server_tv.column(column="#0", anchor="center", minwidth=40, stretch=False, width=36)
+    session_server_tv.heading(column="#0", text="")
     session_server_tv.column(column="Hostname", anchor="e", minwidth=64, stretch=True, width=160)
     session_server_tv.heading(column="Hostname", text="Hostname")
     session_server_tv.column(column="IP Address", anchor="e", minwidth=64, stretch=False, width=90)
@@ -135,7 +146,6 @@ def main():
     log_hscroll = ttk.Scrollbar(logbox_pane, orient='horizontal', command=logbox.xview)
     log_hscroll.grid(column=0, row=1, sticky=(E, W))
     logbox.configure(xscrollcommand=log_hscroll.set)
-
 
 
     # Print a startup banner to mark the beginning of logging
@@ -202,6 +212,12 @@ def update_known_servers_treeview_task(session_server_tv, known_servers, known_s
     log = logging.getLogger("update_known_servers_treeview_task")
     log.info("Mort update_known_servers_treeview_task starting up...")
 
+    # Open the icon used for the server icon
+    server_icon = Image.open("./icons/squid-ink/Devices & Network/png_32/Server.png")
+    server_icon = server_icon.resize((16, 16), Image.BICUBIC)
+    server_icon = ImageTk.PhotoImage(server_icon)
+
+
     # Treeview widgets don't give you a way to iterate over their
     # items. You must store references to the items, yourself.
     # Which is stupid...but, oh well...
@@ -217,7 +233,8 @@ def update_known_servers_treeview_task(session_server_tv, known_servers, known_s
                 new_item = session_server_tv.insert('',
                                                     'end',
                                                     "item{}".format(idx),
-                                                    text=idx,
+                                                    text='',
+                                                    image=server_icon,
                                                     values=(server.hostname, server.ip_address, server.port))
                 items_in_tv.append(new_item)
             # Wait for updates to happen to the underlying list
