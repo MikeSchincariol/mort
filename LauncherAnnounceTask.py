@@ -12,12 +12,13 @@ class LauncherAnnounceTask(threading.Thread):
     messages that arrive
     """
 
-    def __init__(self, known_servers, known_servers_lock):
+    def __init__(self, known_servers, known_servers_cv):
         """
         Class constructor
 
-        :param known_servers:
-        :param known_servers_lock:
+        :param known_servers: A Python list of SessionSeverInfo objects.
+        :param known_servers_cv: A threading.Condition object used to arbitrate access to the known_servers
+                                 list and to notify other threads that the known_servers list was updated.
         """
         # Give a name to this thread and make it a daemon so it
         # doesn't prevent the caller from exiting.
@@ -29,7 +30,7 @@ class LauncherAnnounceTask(threading.Thread):
 
         # Store up the instance data passed in for use later
         self.known_servers = known_servers
-        self.known_servers_lock = known_servers_lock
+        self.known_servers_cv = known_servers_cv
 
         # A socket to watch for session-server announce messages
         self.announce_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -38,7 +39,8 @@ class LauncherAnnounceTask(threading.Thread):
 
         # Setup the announce socket to watch for server announce messages.
         try:
-            self.announce_sock.bind(('<broadcast>', 42124))
+            #self.announce_sock.bind(('<broadcast>', 42124))
+            self.announce_sock.bind(('0.0.0.0', 42124))
         except OSError as ex:
             msg = ("Unable to create broadcast socket."
                    " Error No: {0}"
@@ -77,13 +79,20 @@ class LauncherAnnounceTask(threading.Thread):
             #        interacting with it.
             if "msg_type" in msg_fields.keys():
                 if msg_fields["msg_type"] == "session_server_announce":
-                    with self.known_servers_lock:
+                    with self.known_servers_cv:
+                        known_servers_list_updated = False
                         for known_server in self.known_servers:
                             if known_server.ip_address == msg_fields["ip_address"]:
                                 # We've seen this server before. Update its information in
                                 # case it has changed
-                                known_server.hostname = msg_fields["hostname"]
-                                known_server.port = int(msg_fields["port"])
+                                if known_server.hostname != msg_fields["hostname"]:
+                                    known_server.hostname = msg_fields["hostname"]
+                                    known_servers_list_updated = True
+
+                                if known_server.port != int(msg_fields["port"]):
+                                    known_server.port = int(msg_fields["port"])
+                                    known_servers_list_updated = True
+
                                 known_server.last_seen = datetime.datetime.now()
                                 break
                         else:
@@ -96,14 +105,12 @@ class LauncherAnnounceTask(threading.Thread):
                             self.log.info("Added host: {0} ({1}:{2})".format(new_server.hostname,
                                                                              new_server.ip_address,
                                                                              new_server.port))
+                            known_servers_list_updated = True
 
-                        # Print the new list of known-servers
-                        # :TODO: Update this to display on the GUI!
-                        self.log.info("Session Server Listing @ {}".format(datetime.datetime.now()))
-                        for server in self.known_servers:
-                            self.log.info("\tServer: {0} ({1}:{2})".format(server.hostname,
-                                                                           server.ip_address,
-                                                                           server.port))
+                        # If changes were made to the known_servers list, notify watchers.
+                        if known_servers_list_updated:
+                            self.known_servers_cv.notify_all()
+
                 else:
                     # Discard message; not a "session_server_announce" message
                     msg = ("Invalid session server announce message from {0}:{1}."

@@ -5,6 +5,7 @@ import queue
 from tkinter import *
 from tkinter import ttk
 
+import SessionServerList
 import LauncherAnnounceTask
 import ServerPurgeTask
 
@@ -97,7 +98,16 @@ def main():
 
     session_server_tv = ttk.Treeview(session_servers_pane)
     session_server_tv.grid(column=0, row=0, sticky=(N, S, E, W))
-    session_server_tv.insert('', 'end', "item0", text='First Item')
+    session_server_tv["columns"] = ("Hostname", "IP Address", "Port")
+    session_server_tv.column(column="#0", anchor="center", minwidth=40, stretch=False, width=40)
+    session_server_tv.heading(column="#0", text="Idx")
+    session_server_tv.column(column="Hostname", anchor="e", minwidth=64, stretch=True, width=160)
+    session_server_tv.heading(column="Hostname", text="Hostname")
+    session_server_tv.column(column="IP Address", anchor="e", minwidth=64, stretch=False, width=90)
+    session_server_tv.heading(column="IP Address", text="IP Address")
+    session_server_tv.column(column="Port", anchor="e", minwidth=64, stretch=False, width=48)
+    session_server_tv.heading(column="Port", text="Port")
+
 
     active_sessions_tv = ttk.Treeview(active_sessions_pane)
     active_sessions_tv.grid(column=0, row=0, sticky=(N, S, E, W))
@@ -135,17 +145,22 @@ def main():
 
     # A list of session-servers already seen and a lock to use
     # to arbitrate access from different threads
-    known_servers = []
-    known_servers_lock = threading.Lock()
+    known_servers = SessionServerList.SessionServerList()
+    known_servers_cv = threading.Condition()
 
     # Start a thread to handle announce messages from the session-servers
-    announce_task = LauncherAnnounceTask.LauncherAnnounceTask(known_servers, known_servers_lock)
+    announce_task = LauncherAnnounceTask.LauncherAnnounceTask(known_servers, known_servers_cv)
     announce_task.start()
 
     # Start a thread to periodically clean the list of session-servers to
     # remove those that haven't been heard from in a while.
-    purge_task = ServerPurgeTask.ServerPurgeTask(known_servers, known_servers_lock)
+    purge_task = ServerPurgeTask.ServerPurgeTask(known_servers, known_servers_cv)
     purge_task.start()
+
+    known_servers_treeview_update_task = threading.Thread(target=update_known_servers_treeview_task,
+                                                          name="update_known_servers_treeview_task",
+                                                          args=(session_server_tv, known_servers, known_servers_cv))
+    known_servers_treeview_update_task.start()
 
     # Start a thread to update the GUI logbox when new messages are sent to it's
     # queue
@@ -158,6 +173,7 @@ def main():
     # Start Tk's mainloop to wait for GUI events
     root.mainloop()
 
+
 def update_logbox_task(log_queue, logbox_widget):
     """
 
@@ -165,10 +181,48 @@ def update_logbox_task(log_queue, logbox_widget):
     :param logbox_widget:
     :return:
     """
+    # Configure logging
+    log = logging.getLogger("update_logbox_task")
+    log.info("Mort update_logbox_task starting up...")
+
+    # Watch the queue for messages that should be displayed in
+    # the logbox widget.
     while True:
         item = log_queue.get()
         logbox_widget.insert('end', item.msg+"\n")
 
+
+def update_known_servers_treeview_task(session_server_tv, known_servers, known_servers_cv):
+    """
+
+    :param known_servers_cv:
+    :return:
+    """
+    # Configure logging
+    log = logging.getLogger("update_known_servers_treeview_task")
+    log.info("Mort update_known_servers_treeview_task starting up...")
+
+    # Treeview widgets don't give you a way to iterate over their
+    # items. You must store references to the items, yourself.
+    # Which is stupid...but, oh well...
+    items_in_tv = []
+    with known_servers_cv:
+        while True:
+            # Clear treeview of all entries present
+            for item in items_in_tv:
+                session_server_tv.delete(item)
+            items_in_tv.clear()
+            # Insert entries from known_servers list
+            for idx, server in enumerate(known_servers):
+                new_item = session_server_tv.insert('',
+                                                    'end',
+                                                    "item{}".format(idx),
+                                                    text=idx,
+                                                    values=(server.hostname, server.ip_address, server.port))
+                items_in_tv.append(new_item)
+            # Wait for updates to happen to the underlying list
+            # :NOTE: After wait() resumes, it re-aquires the lock.
+            known_servers_cv.wait()
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 import unittest
 import datetime
 
-import SessionServerInfo as ssi
+from SessionServerInfo import SessionServerInfo as ssi
 
 class TestSessionServerInfo(unittest.TestCase):
 
@@ -10,7 +10,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and check the relevant fields are "None"
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         self.assertIsNone(inst.hostname)
         self.assertIsNone(inst.ip_address)
@@ -23,10 +23,10 @@ class TestSessionServerInfo(unittest.TestCase):
         Create an instance and check the relevant fields are set
         to the values passed into the constructor
         """
-        inst = ssi.SessionServerInfo("test_session_server",
-                                     "192.168.7.220",
-                                     42124,
-                                     datetime.datetime.now())
+        inst = ssi("test_session_server",
+                   "192.168.7.220",
+                   42124,
+                   datetime.datetime.now())
 
         self.assertIsInstance(inst.hostname, str)
         self.assertIsInstance(inst.ip_address, str)
@@ -39,7 +39,7 @@ class TestSessionServerInfo(unittest.TestCase):
         Check the an invalid type for the hostname member causes an assertion error.
         """
         self.assertRaises(AssertionError,
-                          ssi.SessionServerInfo,
+                          ssi,
                           22, "192.168.7.220", 42124, datetime.datetime.now())
 
 
@@ -49,7 +49,7 @@ class TestSessionServerInfo(unittest.TestCase):
         Check the an invalid type for the ip_address member causes an assertion error.
         """
         self.assertRaises(AssertionError,
-                          ssi.SessionServerInfo,
+                          ssi,
                           "test_session_server", 1921687220, 42124, datetime.datetime.now())
 
 
@@ -58,7 +58,7 @@ class TestSessionServerInfo(unittest.TestCase):
         Check the an invalid type for the port member causes an assertion error.
         """
         self.assertRaises(AssertionError,
-                          ssi.SessionServerInfo,
+                          ssi,
                           "test_session_server", "192.168.7.220", "42124", datetime.datetime.now())
 
     def test_constructor_invalid_last_seen(self):
@@ -66,7 +66,7 @@ class TestSessionServerInfo(unittest.TestCase):
         Check the an invalid type for the last_seen member causes an assertion error.
         """
         self.assertRaises(AssertionError,
-                          ssi.SessionServerInfo,
+                          ssi,
                           "test_session_server", "192.168.7.220", 42124, "Aug 3 2016")
 
 
@@ -74,7 +74,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and try get/set the hostname property only.
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         inst.hostname = "test_session_server"
 
@@ -88,7 +88,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and try set the hostname property with an invalid type.
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         self.assertRaises(AssertionError, inst.hostname,  22)
 
@@ -98,7 +98,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and try get/set the ip_address property only.
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         inst.ip_address = "192.168.7.220"
 
@@ -112,7 +112,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and try get/set the ip_address property only.
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         self.assertRaises(AssertionError, inst.ip_address,  1921687220)
 
@@ -121,7 +121,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and try get/set the port property only.
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         inst.port = 42124
 
@@ -135,7 +135,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and try get/set the port property only.
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         self.assertRaises(AssertionError, inst.port, "42124")
 
@@ -144,7 +144,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
         Create an instance and try get/set the last_seen property only.
         """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         expected_time = datetime.datetime.now()
 
@@ -160,7 +160,7 @@ class TestSessionServerInfo(unittest.TestCase):
         """
             Create an instance and try get/set the last_seen property only.
             """
-        inst = ssi.SessionServerInfo()
+        inst = ssi()
 
         self.assertRaises(AssertionError, inst.last_seen, "Aug 3 2016")
 

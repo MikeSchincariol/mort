@@ -11,12 +11,13 @@ class ServerPurgeTask(threading.Thread):
     received within a specific time interval from a session-server.
     """
 
-    def __init__(self, known_servers, known_servers_lock):
+    def __init__(self, known_servers, known_servers_cv):
         """
         Class constructor
 
-        :param known_servers: A list of session-servers to iterate over.
-        :param known_servers_lock: A threading.Lock object related to the known-servers list.
+        :param known_servers: A Python list of SessionSeverInfo objects.
+        :param known_servers_cv: A threading.Condition object used to arbitrate access to the known_servers
+                                 list and to notify other threads that the known_servers list was updated.
         """
         # Give a name to this thread and make it a daemon so it
         # doesn't prevent the caller from exiting.
@@ -29,7 +30,7 @@ class ServerPurgeTask(threading.Thread):
         # Store the references to the known_servers list and it's associated
         # lock for use later.
         self.known_servers = known_servers
-        self.known_servers_lock = known_servers_lock
+        self.known_servers_cv = known_servers_cv
 
 
     def run(self):
@@ -41,7 +42,8 @@ class ServerPurgeTask(threading.Thread):
         while True:
             # Grab the lock before doing anything with the list since the list
             # is shared between threads.
-            with self.known_servers_lock:
+            with self.known_servers_cv:
+                known_servers_list_updated = False
                 for server in self.known_servers[:]:
                     # If we haven't seen an announce message from the server in
                     # the last 30 seconds, remove it from the list.
@@ -52,5 +54,11 @@ class ServerPurgeTask(threading.Thread):
                                                                                           server.ip_address,
                                                                                           server.port,
                                                                                           server.last_seen))
+                        known_servers_list_updated = True
+
+                # If changes were made to the known_servers list, notify watchers.
+                if known_servers_list_updated:
+                    self.known_servers_cv.notify_all()
+
             # Chill for a bit before checking again...
             time.sleep(10)
