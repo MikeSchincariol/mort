@@ -45,6 +45,7 @@ class SessionServersWidget(object):
         # Create the TreeView component that will display the list of session-servers.
         self.session_server_tv = ttk.Treeview(self.session_servers_frame)
         self.session_server_tv.grid(column=0, row=0, padx=4, pady=4, sticky=(N, S, E, W))
+        self.session_server_tv["selectmode"] = "browse"
         self.session_server_tv["columns"] = ("Hostname", "IP Address", "Port")
         self.session_server_tv.column(column="#0", anchor="center", minwidth=40, stretch=False, width=36)
         self.session_server_tv.heading(column="#0", text="")
@@ -58,10 +59,6 @@ class SessionServersWidget(object):
         # Treeview widgets don't give you a way to iterate over their items. You
         # must store references to the items, yourself. Which is stupid...but, oh well...
         self.items_in_tv = []
-
-        self.log.debug("Construction of the session-servers widget completed.")
-
-
 
 
     def clear(self):

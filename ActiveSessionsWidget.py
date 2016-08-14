@@ -45,6 +45,7 @@ class ActiveSessionsWidget(object):
         # Create the TreeView component that will display the list of active sessions.
         self.active_sessions_tv = ttk.Treeview(self.active_sessions_frame)
         self.active_sessions_tv.grid(column=0, columnspan=3, row=0, padx=4, pady=4, sticky=(N, S, E, W))
+        self.active_sessions_tv["selectmode"] = "browse"
         self.active_sessions_tv["columns"] = ("Username", "Display #", "Display Name", "Geometry", "PID")
         self.active_sessions_tv.column(column="#0", anchor="center", minwidth=40, stretch=False, width=40)
         self.active_sessions_tv.heading(column="#0", text="")
