@@ -25,7 +25,7 @@ class ServerPurgeTask(threading.Thread):
 
         # Configure logging
         self.log = logging.getLogger("ServerPurgeTask")
-        self.log.info("Mort ServerPurgeTask starting up...")
+        self.log.debug("Starting up...")
 
         # Store the references to the known_servers list and it's associated
         # lock for use later.
@@ -50,7 +50,7 @@ class ServerPurgeTask(threading.Thread):
                     delta = datetime.datetime.now() - server.last_seen
                     if delta.seconds > 30:
                         self.known_servers.remove(server)
-                        self.log.info("Removed host: {0} ({1}:{2}) last seen: {3}".format(server.hostname,
+                        self.log.warn("Removed host: {0} ({1}:{2}) last seen: {3}".format(server.hostname,
                                                                                           server.ip_address,
                                                                                           server.port,
                                                                                           server.last_seen))

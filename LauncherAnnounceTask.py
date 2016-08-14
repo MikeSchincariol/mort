@@ -26,7 +26,7 @@ class LauncherAnnounceTask(threading.Thread):
 
         # Configure logging
         self.log = logging.getLogger("LauncherAnnounceTask")
-        self.log.info("Mort LauncherAnnounceTask starting up...")
+        self.log.debug("Starting up...")
 
         # Store up the instance data passed in for use later
         self.known_servers = known_servers
