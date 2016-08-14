@@ -1,3 +1,4 @@
+import sys
 import threading
 import logging
 import logging.handlers
@@ -108,6 +109,17 @@ def main():
 
     # Create the log-box widget as a child of the first vertical PanedWindow widget
     log_box_widget = LogBoxWidget.LogBoxWidget(v_panes, log_queue)
+
+    #
+    exit_button_icon = Image.open("./icons/man_exit.png")
+    exit_button_icon = exit_button_icon.resize((12, 15), Image.BICUBIC)
+    exit_button_icon = ImageTk.PhotoImage(exit_button_icon)
+    exit_button = ttk.Button(v_panes,
+                             text="Exit",
+                             image=exit_button_icon,
+                             compound='left',
+                             command=sys.exit)
+    v_panes.add(exit_button)
 
     # A list of session-servers already seen and a lock to use
     # to arbitrate access from different threads
