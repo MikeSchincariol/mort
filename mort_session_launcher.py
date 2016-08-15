@@ -14,6 +14,7 @@ import ServerPurgeTask
 
 import SessionServersWidget
 import ActiveSessionsWidget
+import RegisteredSessionsWidget
 import LogBoxWidget
 
 def main():
@@ -68,58 +69,53 @@ def main():
 
     # Create the GUI widgets
     root = Tk()
-    root.title("Mort VNC Session Launcher")
+    root.geometry("900x640")
+    root.title("Mort VNC Session Launcher", )
     root.grid()
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
 
-    v_panes = ttk.PanedWindow(root, orient='vertical')
-    v_panes.grid(column=0, row=0, sticky=(N, S, E, W))
-    v_panes.columnconfigure(0, weight=1)
-    v_panes.rowconfigure(0, weight=1)
+    v_panes0 = ttk.PanedWindow(root, orient='vertical')
+    v_panes0.grid(column=0, row=0, sticky=(N, S, E, W))
+    v_panes0.columnconfigure(0, weight=1)
+    v_panes0.rowconfigure(0, weight=1)
 
     # :WARN: PanedWindow's are also geometry managers, so, don't
     #        grid any panes that are added to the PanedWindow
     #        instance (even if the newly added pane is itself a
-    #        PaneWindow instance).
+    #        PanedWindow instance).
 
-    h_panes0 = ttk.PanedWindow(v_panes, orient='horizontal')
-    v_panes.add(h_panes0, weight=1)
+    h_panes0 = ttk.PanedWindow(v_panes0, orient='horizontal')
+    v_panes0.add(h_panes0, weight=1)
     h_panes0.columnconfigure(0, weight=1)
     h_panes0.rowconfigure(0, weight=1)
 
     # Create the session-servers widget as a child of the first horizontal PanedWindow widget
     session_servers_widget = SessionServersWidget.SessionServersWidget(h_panes0)
+    session_servers_widget.add_selection_event_handler(lambda e: print("HI"))
 
-    # Create the active-sessions widget as a child of the first horizontal PanedWindow widget
-    active_sessions_widget = ActiveSessionsWidget.ActiveSessionsWidget(h_panes0)
+    v_panes1 = ttk.PanedWindow(h_panes0, orient='vertical')
+    h_panes0.add(v_panes1, weight=1)
 
-    # Create the registered-sessions widget as a child of the first horizontal PanedWindow widget
-    registered_sessions_pane = ttk.LabelFrame(h_panes0,
-                                              text='Registered Sessions',
-                                              width=200,
-                                              height=100)
-    registered_sessions_pane.columnconfigure(0, weight=1)
-    registered_sessions_pane.rowconfigure(0, weight=1)
-    h_panes0.add(registered_sessions_pane, weight=1)
+    # Create the active-sessions widget as a child of the second vertical PanedWindow widget
+    active_sessions_widget = ActiveSessionsWidget.ActiveSessionsWidget(v_panes1)
 
-    registered_sessions_tv = ttk.Treeview(registered_sessions_pane)
-    registered_sessions_tv.grid(column=0, row=0, padx=4, pady=4, sticky=(N, S, E, W))
-    registered_sessions_tv.insert('', 'end', "item0", text='First Item')
+    # Create the registered-sessions widget as a child of the second vertical PanedWindow widget
+    registered_sessions_widget = RegisteredSessionsWidget.RegisteredSessionsWidget(v_panes1)
 
     # Create the log-box widget as a child of the first vertical PanedWindow widget
-    log_box_widget = LogBoxWidget.LogBoxWidget(v_panes, log_queue)
+    log_box_widget = LogBoxWidget.LogBoxWidget(v_panes0, log_queue)
 
     #
     exit_button_icon = Image.open("./icons/man_exit.png")
     exit_button_icon = exit_button_icon.resize((12, 15), Image.BICUBIC)
     exit_button_icon = ImageTk.PhotoImage(exit_button_icon)
-    exit_button = ttk.Button(v_panes,
+    exit_button = ttk.Button(v_panes0,
                              text="Exit",
                              image=exit_button_icon,
                              compound='left',
                              command=sys.exit)
-    v_panes.add(exit_button)
+    v_panes0.add(exit_button)
 
     # A list of session-servers already seen and a lock to use
     # to arbitrate access from different threads

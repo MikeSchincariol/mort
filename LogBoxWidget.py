@@ -58,13 +58,11 @@ class LogBoxWidget(object):
         self.msg_icons['CRITICAL'] = icon
 
         # Create a frame that can display a name, to wrap the Text component.
-        self.logbox_pane = ttk.LabelFrame(self.parent,
-                                          text='Log Box',
-                                          width=600,
-                                          height=100)
-
+        self.logbox_pane = ttk.LabelFrame(self.parent, text='Log Box')
         self.logbox_pane.columnconfigure(0, weight=1)
+        self.logbox_pane.columnconfigure(1, weight=0)
         self.logbox_pane.rowconfigure(0, weight=1)
+        self.logbox_pane.rowconfigure(1, weight=0)
         self.parent.add(self.logbox_pane, weight=1)
 
         # Create the Text component that will display the log messages.
