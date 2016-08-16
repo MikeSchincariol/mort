@@ -1,4 +1,5 @@
 import sys
+import socket
 import threading
 import logging
 import logging.handlers
@@ -92,7 +93,7 @@ def main():
 
     # Create the session-servers widget as a child of the first horizontal PanedWindow widget
     session_servers_widget = SessionServersWidget.SessionServersWidget(h_panes0)
-    session_servers_widget.add_selection_event_handler(lambda e: print("HI"))
+    session_servers_widget.add_selection_event_handler(fetch_active_sessions)
 
     v_panes1 = ttk.PanedWindow(h_panes0, orient='vertical')
     h_panes0.add(v_panes1, weight=1)
@@ -164,6 +165,75 @@ def update_session_servers_task(session_servers_widget, known_servers, known_ser
             # Wait for updates to happen to the underlying list
             # :NOTE: After wait() resumes, it re-aquires the lock.
             known_servers_cv.wait()
+
+
+def fetch_active_sessions(info):
+    """
+
+    :param self:
+    :param info: A dictionary of key:value pairs representing the name
+                 and value of the columns of the selected item.
+    :return:
+    """
+    # Configure logging
+    log = logging.getLogger("fetch_active_sessions")
+
+    # Construct the request message
+    msg = ("msg_type:get_active_sessions\n")
+
+    # Construct a TCP socket to communicate with the server
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    except OSError as ex:
+        msg = ("Unable to create TCP socket."
+               " Error No: {0}"
+               " Error Msg: {1}".format(ex.errno, ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Connect to the remote server
+    try:
+        sock.connect((info["IP Address"], info["Port"]))
+    except OSError as ex:
+        msg = ("Unable to connect to remote host."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(info["IP Address"],
+                                        info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Send the request
+    try:
+        sock.sendall(msg.encode('utf8'))
+    except OSError as ex:
+        msg = ("Unable to send message to TCP socket."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(info["IP Address"],
+                                        info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Wait for the response
+
+
+    # Close the socket
+
+
+    # Validate the response
+
+    # Display the results in the active-sessions Treeview
+
+
+
 
 if __name__ == "__main__":
     main()

@@ -65,6 +65,11 @@ class SessionServersWidget(object):
         # must store references to the items, yourself. Which is stupid...but, oh well...
         self.items_in_tv = []
 
+        # A list of method references to call when the selection changes and
+        # register an initial handler to call when the treeview selection changes.
+        self.treeviewselect_handlers = []
+        self.session_server_tv.bind(sequence="<<TreeviewSelect>>",
+                                    func=self.handle_treeviewselect)
 
 
 
@@ -105,19 +110,36 @@ class SessionServersWidget(object):
         Registers the callback to be called when the selection event
         of the session-servers TreeView fires.
 
-        :param callback:
-
+        :param callback: A method that takes as its only argument, a dictionary
+                         of key:value pairs corresponding to the values of
+                         the selected item.
         """
-        self.log.debug("Binding selection event handler: {}".format(callback))
+        self.log.debug("Adding Treeview selection event handler: {}".format(callback))
+        self.treeviewselect_handlers.append(callback)
 
-        # TODO: Conver this so that the upper layers don't have to worry
-        #       about the fact that we are using a TreeView. Have it return
-        #       to the caller a dictionary of items and their values taken
-        #       from the current selection in the TreeView.
-        #
-        #       Probably have to bind an initial handler in __init__ that
-        #       extracts the info and passes it to all handlers registered
-        #       with the add_selection_event_handler() method.
 
-        self.session_server_tv.bind(sequence="<<TreeviewSelect>>",
-                                    func=callback)
+    def handle_treeviewselect(self, e):
+        """
+        :param e: A TK event object
+        :return:
+        """
+        self.log.debug("Item selection changed...")
+        # Get the column names (note that Tk returns this as item 4
+        # in a weird 5-tuple structure)
+        keys = self.session_server_tv.configure("columns")[4]
+
+        # Get the item in the tree that is selected
+        selected_item = self.session_server_tv.selection()
+
+        # Get the value of each column of the selected item
+        selected_vals = self.session_server_tv.item(selected_item)["values"]
+
+        # Construct the dictionary of key:value pairs to give the registered handlers.
+        vals = {}
+        for idx, key in enumerate(keys):
+            vals[key] = selected_vals[idx]
+
+        # Call each registered handler in turn
+        for handler in self.treeviewselect_handlers:
+            self.log.debug("Calling handler {}({})".format(handler, vals))
+            handler(vals)
