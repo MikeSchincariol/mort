@@ -110,9 +110,7 @@ class SessionServersWidget(object):
         Registers the callback to be called when the selection event
         of the session-servers TreeView fires.
 
-        :param callback: A method that takes as its only argument, a dictionary
-                         of key:value pairs corresponding to the values of
-                         the selected item.
+        :param callback: A method that will be passed *args when called.
         """
         self.log.debug("Adding Treeview selection event handler: {}".format(callback))
         self.treeviewselect_handlers.append([callback, args])
@@ -124,6 +122,19 @@ class SessionServersWidget(object):
         :return:
         """
         self.log.debug("Item selection changed...")
+
+        # Call each registered handler in turn
+        for handler, args in self.treeviewselect_handlers:
+            self.log.debug("Calling handler {}".format(handler))
+            handler(*args)
+
+
+    def get_selected_item_info(self):
+        """
+        Returns a dictionary of the columns names and their associated
+        values for the selected item.
+        """
+        self.log.debug("Retrieving selected item info...")
         # Get the column names (note that Tk returns this as item 4
         # in a weird 5-tuple structure)
         keys = self.session_server_tv.configure("columns")[4]
@@ -131,15 +142,14 @@ class SessionServersWidget(object):
         # Get the item in the tree that is selected
         selected_item = self.session_server_tv.selection()
 
-        # Get the value of each column of the selected item
+        # Get the value of each column of the selected item. If no item
+        # is selected, return None.
         selected_vals = self.session_server_tv.item(selected_item)["values"]
+        if selected_vals == "":
+            return None
 
         # Construct the dictionary of key:value pairs to give the registered handlers.
         vals = {}
         for idx, key in enumerate(keys):
             vals[key] = selected_vals[idx]
-
-        # Call each registered handler in turn
-        for handler, args in self.treeviewselect_handlers:
-            self.log.debug("Calling handler {}({})".format(handler, vals))
-            handler(vals, *args)
+        return vals

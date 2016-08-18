@@ -120,7 +120,12 @@ def main():
 
     # Register call backs to happen when the various GUI items are interacted with
     session_servers_widget.add_selection_event_handler(fetch_active_sessions,
+                                                       session_servers_widget,
                                                        active_sessions_widget)
+
+    active_sessions_widget.add_refresh_button_clicked_event_handler(fetch_active_sessions,
+                                                                    session_servers_widget,
+                                                                    active_sessions_widget)
 
     # A list of session-servers already seen and a lock to use
     # to arbitrate access from different threads
@@ -171,16 +176,25 @@ def update_session_servers_task(session_servers_widget, known_servers, known_ser
             known_servers_cv.wait()
 
 
-def fetch_active_sessions(info, active_sessions_widget):
+def fetch_active_sessions(session_servers_widget, active_sessions_widget):
     """
-
-    :param self:
     :param info: A dictionary of key:value pairs representing the name
                  and value of the columns of the selected item.
+
+    :param active_sessions_widget:
     :return:
     """
     # Configure logging
     log = logging.getLogger("fetch_active_sessions")
+
+    # Get the server info
+    # :NOTE: If no item is selected, "None" will be returned, in which case,
+    #        don't proceed any further.
+    server_info = session_servers_widget.get_selected_item_info()
+    if server_info is None:
+        log.debug("No server info returned from session_servers_widget. Nothing selected?")
+        log.debug("Nothing to do. Returning early to caller.")
+        return
 
     # Construct the request message
     msg = ("msg_type:get_active_sessions\n")
@@ -199,15 +213,15 @@ def fetch_active_sessions(info, active_sessions_widget):
 
     # Connect to the remote server
     try:
-        log.debug("Connecting to server {0}:{1}...".format(info["IP Address"], info["Port"]))
-        sock.connect((info["IP Address"], info["Port"]))
+        log.debug("Connecting to server {0}:{1}...".format(server_info["IP Address"], server_info["Port"]))
+        sock.connect((server_info["IP Address"], server_info["Port"]))
     except OSError as ex:
         msg = ("Unable to connect to remote host."
                " IP Address: {0}"
                " Port: {1}"
                " Error No: {2}"
-               " Error Msg: {3}".format(info["IP Address"],
-                                        info["Port"],
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
@@ -222,8 +236,8 @@ def fetch_active_sessions(info, active_sessions_widget):
                " IP Address: {0}"
                " Port: {1}"
                " Error No: {2}"
-               " Error Msg: {3}".format(info["IP Address"],
-                                        info["Port"],
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
@@ -257,30 +271,29 @@ def fetch_active_sessions(info, active_sessions_widget):
                 sessions = json.loads(active_sessions_json)
                 log.debug("Message is good. Contains {} entries.".format(len(sessions)))
                 for session in sessions:
-                    #pass
                     active_sessions_widget.insert(-1, **session)
 
             else:
                 # Discard message; not active-sessions listing.
                 msg = ("Invalid active sessions list message from {0}:{1}."
                        " Invalid active-sessions listing."
-                       " Discarding".format(info["IP Address"],
-                                            info["Port"]))
+                       " Discarding".format(server_info["IP Address"],
+                                            server_info["Port"]))
                 log.warning(msg)
 
         else:
             # Discard message; not a "active_sessions_list" message
             msg = ("Invalid active sessions list message from {0}:{1}."
                    " Invalid msg_type value."
-                   " Discarding".format(info["IP Address"],
-                                        info["Port"]))
+                   " Discarding".format(server_info["IP Address"],
+                                        server_info["Port"]))
             log.warning(msg)
     else:
         # Discard message; no msg_type field found.
         msg = ("Invalid active sessions list message from {0}:{1}."
                " Invalid msg_type value."
-               " Discarding".format(info["IP Address"],
-                                    info["Port"]))
+               " Discarding".format(server_info["IP Address"],
+                                    server_info["Port"]))
         log.warning(msg)
     log.debug("Done updating active-sessions widget.")
 

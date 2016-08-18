@@ -72,7 +72,8 @@ class ActiveSessionsWidget(object):
         self.refresh_button = ttk.Button(self.active_sessions_frame,
                                          text="Refresh",
                                          image=self.refresh_button_icon,
-                                         compound='left')
+                                         compound='left',
+                                         command=self.handle_refresh_button_clicked)
         self.refresh_button.grid(column=0, row=2, sticky=(N, S, E, W))
 
         # Add the new session button
@@ -124,6 +125,9 @@ class ActiveSessionsWidget(object):
         # Insert some dummy items into the TreeView while stubbing out the code.
         self.insert(-1, "mschinca", "300", "test", 14720, "1920x1020", "RGB888")
         self.insert(-1, "bklow", "55", "test313", 2709, "1280x720", "RGB565")
+
+        # A list of method references to call when the refresh button is clicked.
+        self.refresh_button_clicked_handlers = []
 
 
     def clear(self):
@@ -193,3 +197,26 @@ class ActiveSessionsWidget(object):
             self.active_sessions_tv.see(parent)
         else:
             pass
+
+
+    def add_refresh_button_clicked_event_handler(self, callback, *args):
+        """
+        Registers the callback to be called when the refresh button is clicked.
+
+        :param callback: A method that will be passed *args when called.
+        """
+        self.log.debug("Adding refresh button clicked event handler: {}".format(callback))
+        self.refresh_button_clicked_handlers.append([callback, args])
+
+
+    def handle_refresh_button_clicked(self):
+        """
+        :param e: A TK event object
+        :return:
+        """
+        self.log.debug("Refresh button clicked...")
+
+        # Call each registered handler in turn
+        for handler, args in self.refresh_button_clicked_handlers:
+            self.log.debug("Calling handler {}".format(handler))
+            handler(*args)
