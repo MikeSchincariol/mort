@@ -5,6 +5,7 @@ import logging
 import logging.handlers
 import LogFilter
 import queue
+import json
 from tkinter import *
 from tkinter import ttk
 from PIL import ImageTk, Image
@@ -93,7 +94,6 @@ def main():
 
     # Create the session-servers widget as a child of the first horizontal PanedWindow widget
     session_servers_widget = SessionServersWidget.SessionServersWidget(h_panes0)
-    session_servers_widget.add_selection_event_handler(fetch_active_sessions)
 
     v_panes1 = ttk.PanedWindow(h_panes0, orient='vertical')
     h_panes0.add(v_panes1, weight=1)
@@ -108,7 +108,7 @@ def main():
     log_box_widget = LogBoxWidget.LogBoxWidget(v_panes0, log_queue)
 
     #
-    exit_button_icon = Image.open("./icons/man_exit.png")
+    exit_button_icon = Image.open("./icons/user_exit.png")
     exit_button_icon = exit_button_icon.resize((12, 15), Image.BICUBIC)
     exit_button_icon = ImageTk.PhotoImage(exit_button_icon)
     exit_button = ttk.Button(v_panes0,
@@ -117,6 +117,10 @@ def main():
                              compound='left',
                              command=sys.exit)
     v_panes0.add(exit_button)
+
+    # Register call backs to happen when the various GUI items are interacted with
+    session_servers_widget.add_selection_event_handler(fetch_active_sessions,
+                                                       active_sessions_widget)
 
     # A list of session-servers already seen and a lock to use
     # to arbitrate access from different threads
@@ -167,7 +171,7 @@ def update_session_servers_task(session_servers_widget, known_servers, known_ser
             known_servers_cv.wait()
 
 
-def fetch_active_sessions(info):
+def fetch_active_sessions(info, active_sessions_widget):
     """
 
     :param self:
@@ -183,6 +187,7 @@ def fetch_active_sessions(info):
 
     # Construct a TCP socket to communicate with the server
     try:
+        log.debug("Creating socket...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     except OSError as ex:
@@ -194,6 +199,7 @@ def fetch_active_sessions(info):
 
     # Connect to the remote server
     try:
+        log.debug("Connecting to server {0}:{1}...".format(info["IP Address"], info["Port"]))
         sock.connect((info["IP Address"], info["Port"]))
     except OSError as ex:
         msg = ("Unable to connect to remote host."
@@ -209,6 +215,7 @@ def fetch_active_sessions(info):
 
     # Send the request
     try:
+        log.debug("Sending list_active_sessions request...")
         sock.sendall(msg.encode('utf8'))
     except OSError as ex:
         msg = ("Unable to send message to TCP socket."
@@ -222,15 +229,61 @@ def fetch_active_sessions(info):
         log.critical(msg)
         raise
 
-    # Wait for the response
+    # Wait for the response then close the socket
+    log.debug("Waiting for response...")
+    resp = sock.recv(16384)
+    log.debug("Received {0} bytes".format(len(resp)))
+    resp = resp.decode('utf8')
+    log.debug("Closing socket")
+    sock.close()
 
+    # Break the response down into its key/value pairs
+    log.debug("Parsing message...")
+    resp_lines = resp.splitlines()
+    resp_fields = {}
+    for resp_line in resp_lines:
+        resp_field = resp_line.split(':', 1)
+        resp_fields[resp_field[0]] = resp_field[1]
 
-    # Close the socket
+    # Check for the correct message type. If this isn't a active_sessions_list
+    # message then discard it and move on.
+    if "msg_type" in resp_fields.keys():
+        if resp_fields["msg_type"] == "active_sessions_list":
+            # Clear the current listing of all entries present
+            active_sessions_widget.clear()
+            # Display the results in the active-sessions Treeview
+            if "active_sessions" in resp_fields.keys():
+                active_sessions_json = resp_fields["active_sessions"]
+                sessions = json.loads(active_sessions_json)
+                log.debug("Message is good. Contains {} entries.".format(len(sessions)))
+                for session in sessions:
+                    #pass
+                    active_sessions_widget.insert(-1, **session)
 
+            else:
+                # Discard message; not active-sessions listing.
+                msg = ("Invalid active sessions list message from {0}:{1}."
+                       " Invalid active-sessions listing."
+                       " Discarding".format(info["IP Address"],
+                                            info["Port"]))
+                log.warning(msg)
 
-    # Validate the response
+        else:
+            # Discard message; not a "active_sessions_list" message
+            msg = ("Invalid active sessions list message from {0}:{1}."
+                   " Invalid msg_type value."
+                   " Discarding".format(info["IP Address"],
+                                        info["Port"]))
+            log.warning(msg)
+    else:
+        # Discard message; no msg_type field found.
+        msg = ("Invalid active sessions list message from {0}:{1}."
+               " Invalid msg_type value."
+               " Discarding".format(info["IP Address"],
+                                    info["Port"]))
+        log.warning(msg)
+    log.debug("Done updating active-sessions widget.")
 
-    # Display the results in the active-sessions Treeview
 
 
 

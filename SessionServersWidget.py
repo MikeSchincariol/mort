@@ -105,7 +105,7 @@ class SessionServersWidget(object):
         self.items_in_tv.append(new_item)
 
 
-    def add_selection_event_handler(self, callback):
+    def add_selection_event_handler(self, callback, *args):
         """
         Registers the callback to be called when the selection event
         of the session-servers TreeView fires.
@@ -115,7 +115,7 @@ class SessionServersWidget(object):
                          the selected item.
         """
         self.log.debug("Adding Treeview selection event handler: {}".format(callback))
-        self.treeviewselect_handlers.append(callback)
+        self.treeviewselect_handlers.append([callback, args])
 
 
     def handle_treeviewselect(self, e):
@@ -140,6 +140,6 @@ class SessionServersWidget(object):
             vals[key] = selected_vals[idx]
 
         # Call each registered handler in turn
-        for handler in self.treeviewselect_handlers:
+        for handler, args in self.treeviewselect_handlers:
             self.log.debug("Calling handler {}({})".format(handler, vals))
-            handler(vals)
+            handler(vals, *args)
