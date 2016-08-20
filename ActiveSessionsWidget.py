@@ -84,7 +84,8 @@ class ActiveSessionsWidget(object):
         self.new_button = ttk.Button(self.active_sessions_frame,
                                      text="New",
                                      image=self.new_button_icon,
-                                     compound='left')
+                                     compound='left',
+                                     command=self.handle_new_button_clicked)
         self.new_button.grid(column=1, row=2, sticky=(N, S, E, W))
 
         # Add the kill active-session button
@@ -95,7 +96,8 @@ class ActiveSessionsWidget(object):
         self.kill_button = ttk.Button(self.active_sessions_frame,
                                       text="Kill",
                                       image=self.kill_button_icon,
-                                      compound='left')
+                                      compound='left',
+                                      command=self.handle_kill_button_clicked)
         self.kill_button.grid(column=2, row=2, sticky=(N, S, E, W))
 
         # Add the connect to active-session button
@@ -106,7 +108,8 @@ class ActiveSessionsWidget(object):
         self.connect_button = ttk.Button(self.active_sessions_frame,
                                          text="Connect",
                                          image=self.connect_button_icon,
-                                         compound='left')
+                                         compound='left',
+                                         command=self.handle_connect_button_clicked)
         self.connect_button.grid(column=3, row=2, sticky=(N, S, E, W))
 
         # Treeview widgets don't give you a way to iterate over their items. You
@@ -122,13 +125,29 @@ class ActiveSessionsWidget(object):
         self.log_hscroll.grid(column=0, row=1, columnspan=4, sticky=(E, W))
         self.active_sessions_tv.configure(xscrollcommand=self.log_hscroll.set)
 
-        # Insert some dummy items into the TreeView while stubbing out the code.
-        self.insert(-1, "mschinca", "300", "test", 14720, "1920x1020", "RGB888")
-        self.insert(-1, "bklow", "55", "test313", 2709, "1280x720", "RGB565")
+        # Server identification information to relate the entries in the Treeview
+        # to the server they came from.
+        # :NOTE: The Treeview is only expected to ever hold entries from one server
+        #        at a time.
+        self.server_hostname = None
+        self.server_ipaddress = None
+        self.server_port = None
 
         # A list of method references to call when the refresh button is clicked.
         self.refresh_button_clicked_handlers = []
 
+        # A list of method references to call when the new button is clicked.
+        self.new_button_clicked_handlers = []
+
+        # A list of method references to call when the kill button is clicked.
+        self.kill_button_clicked_handlers = []
+
+        # A list of method references to call when the connect button is clicked.
+        self.connect_button_clicked_handlers = []
+
+        # Insert some dummy items into the TreeView while stubbing out the code.
+        self.insert(-1, "mschinca", "300", "test", 14720, "1920x1020", "RGB888")
+        self.insert(-1, "bklow", "55", "test313", 2709, "1280x720", "RGB565")
 
     def clear(self):
         """
@@ -199,6 +218,65 @@ class ActiveSessionsWidget(object):
             pass
 
 
+    def get_selected_item_info(self):
+        """
+        Returns a dictionary of the columns names and their associated
+        values for the selected item.
+        """
+        self.log.debug("Retrieving selected item info...")
+        # Get the column names (note that Tk returns this as item 4
+        # in a weird 5-tuple structure)
+        keys = self.active_sessions_tv.configure("columns")[4]
+
+        # Get the item in the tree that is selected
+        selected_item = self.active_sessions_tv.selection()
+
+        # Get the value of each column of the selected item. If no item
+        # is selected, return None.
+        selected_vals = self.active_sessions_tv.item(selected_item)["values"]
+        if selected_vals == "":
+            return None
+
+        # Construct the dictionary of key:value pairs to give the registered handlers.
+        vals = {}
+        for idx, key in enumerate(keys):
+            vals[key] = selected_vals[idx]
+        return vals
+
+
+    def set_server_info(self, hostname, ip_address, port):
+        """
+        Allows the caller to associate server related information with the
+        entries in the Treeview.
+        :param hostname: The hostname of the server that provided the entries.
+        :param ip_address: The IP address of the server that provided the entries.
+        :param port: The port to communicate with the server on
+        """
+        self.log.debug("Setting related server to: {0}({1}:{2})".format(hostname,
+                                                                        ip_address,
+                                                                        port))
+        self.server_hostname = hostname
+        self.server_ip_address = ip_address
+        self.server_port = port
+
+
+    def get_server_info(self):
+        """
+        Retrieves the server information associated with the entries in
+        the Treeview.
+
+        :return: A dictionary with keys for "Hostname", "IP Address" and "Port".
+        """
+        self.log.debug("Returning related server of: {0}({1}:{2})".format(self.server_hostname,
+                                                                          self.server_ip_address,
+                                                                          self.server_port))
+        server_info = {"Hostname": self.server_hostname,
+                       "IP Address": self.server_ip_address,
+                       "Port": self.server_port}
+        return server_info
+
+
+
     def add_refresh_button_clicked_event_handler(self, callback, *args):
         """
         Registers the callback to be called when the refresh button is clicked.
@@ -218,5 +296,74 @@ class ActiveSessionsWidget(object):
 
         # Call each registered handler in turn
         for handler, args in self.refresh_button_clicked_handlers:
+            self.log.debug("Calling handler {}".format(handler))
+            handler(*args)
+
+
+    def add_new_button_clicked_event_handler(self, callback, *args):
+        """
+        Registers the callback to be called when the new button is clicked.
+
+        :param callback: A method that will be passed *args when called.
+        """
+        self.log.debug("Adding new button clicked event handler: {}".format(callback))
+        self.new_button_clicked_handlers.append([callback, args])
+
+
+    def handle_new_button_clicked(self):
+        """
+        :param e: A TK event object
+        :return:
+        """
+        self.log.debug("New button clicked...")
+
+        # Call each registered handler in turn
+        for handler, args in self.new_button_clicked_handlers:
+            self.log.debug("Calling handler {}".format(handler))
+            handler(*args)
+
+
+    def add_kill_button_clicked_event_handler(self, callback, *args):
+        """
+        Registers the callback to be called when the kill button is clicked.
+
+        :param callback: A method that will be passed *args when called.
+        """
+        self.log.debug("Adding kill button clicked event handler: {}".format(callback))
+        self.kill_button_clicked_handlers.append([callback, args])
+
+
+    def handle_kill_button_clicked(self):
+        """
+        :param e: A TK event object
+        :return:
+        """
+        self.log.debug("Kill button clicked...")
+
+        # Call each registered handler in turn
+        for handler, args in self.kill_button_clicked_handlers:
+            self.log.debug("Calling handler {}".format(handler))
+            handler(*args)
+
+
+    def add_connect_button_clicked_event_handler(self, callback, *args):
+        """
+        Registers the callback to be called when the connect button is clicked.
+
+        :param callback: A method that will be passed *args when called.
+        """
+        self.log.debug("Adding connect button clicked event handler: {}".format(callback))
+        self.connect_button_clicked_handlers.append([callback, args])
+
+
+    def handle_connect_button_clicked(self):
+        """
+        :param e: A TK event object
+        :return:
+        """
+        self.log.debug("Connect button clicked...")
+
+        # Call each registered handler in turn
+        for handler, args in self.connect_button_clicked_handlers:
             self.log.debug("Calling handler {}".format(handler))
             handler(*args)

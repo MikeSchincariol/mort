@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
+import os
+import signal
 import string
 import socket
 import errno
@@ -112,6 +114,93 @@ def main():
 
 
 
+def get_xvnc_process_info():
+    """
+    Queries the OS for a list of Xvnc processes that are running
+    and returns details of each process, such as its PID and the
+    command line args each process was called with.
+    :return:
+    """
+
+    # Configure logging
+    log = logging.getLogger("get_xvnc_process_info")
+
+    # Get a list of all the Xvnc processes running
+    log.debug("Querying list of Xvnc processes from OS...")
+    process_list = subprocess.check_output(["ps", "--no-header", "-ww", "-C", "Xvnc", "-o", "user,pid,args"])
+    process_list = process_list.decode('utf8')
+    process_list = process_list.splitlines()
+
+    # Parse out the server information from the listing returned
+    active_sessions = []
+    log.debug("Parsing Xvnc process list...")
+    for process in process_list:
+        matches = re.search(r"^(?P<username>\w+)\s+(?P<pid>\d+)\s+(?P<exe>[\w/]+)\s+(?P<args>.+$)",
+                            process)
+        username, pid, exe, args = matches.group("username", "pid", "exe", "args")
+
+        # Get the display number from the args
+        match = re.search(r"^:(?P<display_number>\d+)", args)
+        if match is None:
+            display_number = 0
+        else:
+            display_number = match.group("display_number")
+
+        # Get the display name from the args
+        match = re.search(r"-desktop\s+(?P<display_name>[ a-zA-Z0-9/\-|.:()]+?)\s+(-|$)", args)
+        if match is None:
+            display_name = "{0}:{1}".format(username, display_number)
+        else:
+            display_name = match.group("display_name")
+
+        # Get the geometry from the args
+        match = re.search(r"-geometry\s+(?P<geometry>[ 0-9x]+?)\s+(-|$)", args)
+        if match is None:
+            geometry = "Unknown"
+        else:
+            geometry = match.group("geometry")
+
+        # Get the pixelformat from the args, which if not present, can be inferred
+        # from the depth parameter if it is present in the args
+        # :NOTE: Consult the Xvnc man page for details on the defaults for
+        #        pixelformat and depth.
+        match = re.search(r"-pixelformat\s+(?P<pixelformat>[a-zA-Z0-9]+?)\s+(-|$)", args)
+        if match is None:
+            match = re.search(r"-depth\s+(?P<depth>[0-9]+?)\s+(-|$)", args)
+            if match is None:
+                # Assume default depth of 24 and default pixelformat of RGB888
+                pixelformat = "RGB888"
+            else:
+                depth = match.group("depth")
+                if depth == "8":
+                    pixelformat = "BGR233"
+                elif depth == "15":
+                    # :NOTE: The Xvnc man page doesn't give a default for 15bpp
+                    pixelformat = "Unknown"
+                elif depth == "16":
+                    pixelformat = "RGB565"
+                elif depth == "24":
+                    pixelformat = "RGB888"
+                else:
+                    pixelformat = "Unknown"
+        else:
+            pixelformat = match.group("pixelformat").upper()
+
+        # Add the session to the list of sessions to return to the client.
+        new_session_info = {}
+        new_session_info["username"] = username
+        new_session_info["pid"] = pid
+        new_session_info["display_number"] = display_number
+        new_session_info["display_name"] = display_name
+        new_session_info["geometry"] = geometry
+        new_session_info["pixelformat"] = pixelformat
+
+        active_sessions.append(new_session_info)
+
+    log.debug("Found {0} Xvnc servers running.".format(len(active_sessions)))
+    return active_sessions
+
+
 def handle_socket_task(sock, remote_addr):
     """
 
@@ -143,101 +232,72 @@ def handle_socket_task(sock, remote_addr):
     # Check for the correct message type. If this isn't a list_active_sessions
     # message then discard it and move on.
     if "msg_type" in msg_fields.keys():
+        log.debug("Message type: {}".format(msg_fields["msg_type"]))
+
         if msg_fields["msg_type"] == "get_active_sessions":
-            log.debug("Message is good")
             # Get a list of all the Xvnc processes running
-            log.debug("Querying list of Xvnc processes from OS...")
-            process_list = subprocess.check_output(["ps", "--no-header", "-ww", "-C", "Xvnc", "-o", "user,pid,args"])
-            process_list = process_list.decode('utf8')
-            process_list = process_list.splitlines()
-
-            # Parse out the server information from the listing returned
-            active_sessions = []
-            log.debug("Parsing Xvnc process list...")
-            for process in process_list:
-                matches = re.search(r"^(?P<username>\w+)\s+(?P<pid>\d+)\s+(?P<exe>[\w/]+)\s+(?P<args>.+$)",
-                                    process)
-                username, pid, exe, args = matches.group("username", "pid", "exe", "args")
-
-                # Get the display number from the args
-                match = re.search(r"^:(?P<display_number>\d+)", args)
-                if match is None:
-                    display_number = 0
-                else:
-                    display_number = match.group("display_number")
-
-                # Get the display name from the args
-                match = re.search(r"-desktop\s+(?P<display_name>[ a-zA-Z0-9/\-|.:()]+?)\s+(-|$)", args)
-                if match is None:
-                    display_name = "{0}:{1}".format(username, display_number)
-                else:
-                    display_name = match.group("display_name")
-
-                # Get the geometry from the args
-                match = re.search(r"-geometry\s+(?P<geometry>[ 0-9x]+?)\s+(-|$)", args)
-                if match is None:
-                    geometry = "Unknown"
-                else:
-                    geometry = match.group("geometry")
-
-                # Get the pixelformat from the args, which if not present, can be inferred
-                # from the depth parameter if it is present in the args
-                # :NOTE: Consult the Xvnc man page for details on the defaults for
-                #        pixelformat and depth.
-                match = re.search(r"-pixelformat\s+(?P<pixelformat>[a-zA-Z0-9]+?)\s+(-|$)", args)
-                if match is None:
-                    match = re.search(r"-depth\s+(?P<depth>[0-9]+?)\s+(-|$)", args)
-                    if match is None:
-                        # Assume default depth of 24 and default pixelformat of RGB888
-                        pixelformat = "RGB888"
-                    else:
-                        depth = match.group("depth")
-                        if depth == "8":
-                            pixelformat = "BGR233"
-                        elif depth == "15":
-                            # :NOTE: The Xvnc man page doesn't give a default for 15bpp
-                            pixelformat = "Unknown"
-                        elif depth == "16":
-                            pixelformat = "RGB565"
-                        elif depth == "24":
-                            pixelformat = "RGB888"
-                        else:
-                            pixelformat = "Unknown"
-                else:
-                    pixelformat = match.group("pixelformat").upper()
-
-                # Add the session to the list of sessions to return to the client.
-                new_session_info = {}
-                new_session_info["username"] = username
-                new_session_info["pid"] = pid
-                new_session_info["display_number"] = display_number
-                new_session_info["display_name"] = display_name
-                new_session_info["geometry"] = geometry
-                new_session_info["pixelformat"] = pixelformat
-
-                active_sessions.append(new_session_info)
-
-            log.debug("Found {0} Xvnc servers running.".format(len(active_sessions)))
-
-            # Encode the list of active sessions as JSON and send it
-            # to the client.
+            active_sessions = get_xvnc_process_info()
+            # Encode the list of active sessions as JSON and send it to the client.
             log.debug("Preparing response message...")
             active_sessions_json = json.dumps(active_sessions)
             resp = ("msg_type:active_sessions_list\n"
-                    "active_sessions:{0}".format(active_sessions_json))
+                    "active_sessions:{0}\n".format(active_sessions_json))
             log.debug("Sending response message...")
             sock.sendall(resp.encode('utf8'))
 
+        elif msg_fields["msg_type"] == "start_active_session":
+            # :TODO:
+            # Pull out the params to call vncserver with
+
+            # Confirm there are no vncservers running with the requested display
+
+            # Spawn / fork a vncserver process
+
+            # Return a response message
+            pass
+
+        elif msg_fields["msg_type"] == "kill_active_session":
+            # Get the PID of the Xvnc process to kill from the message
+            if "pid" in msg_fields:
+                # Get a list of all the Xvnc processes running
+                active_sessions = get_xvnc_process_info()
+                # Confirm it is an Xvnc process that is active
+                pid = msg_fields["pid"]
+                for active_session in active_sessions:
+                    if active_session["pid"] == pid:
+                        # Kill it
+                        os.kill(int(pid), signal.SIGKILL)
+                        # Prepare response message to confirm the process was killed.
+                        resp = ("msg_type:kill_active_session_response\n"
+                                "outcome:killed\n")
+                        break
+                else:
+                    # An Xvnc process with the requested PID was not found so
+                    # nothing to kill (no work to do).
+                    # Prepare response message for the client to explain this.
+                    resp = ("msg_type:kill_active_session_response\n"
+                            "outcome:process not found\n")
+                # Send the response back to the caller
+                sock.sendall(resp.encode('utf8'))
+
+            else:
+                msg = ("Invalid message from {0}:{1}."
+                       " Missing PID value."
+                       " Discarding".format(remote_addr[0],
+                                            remote_addr[1]))
+                log.warning(msg)
+
+
         else:
             # Discard message; not a "active_sessions_list" message
-            msg = ("Invalid get_active_sessions message from {0}:{1}."
+            msg = ("Invalid message from {0}:{1}."
                    " Invalid msg_type value."
                    " Discarding".format(remote_addr[0],
                                         remote_addr[1]))
             log.warning(msg)
     else:
         # Discard message; no msg_type field found.
-        msg = ("Invalid get_active_sessions message from {0}:{1}."
+        msg = ("Invalid message from {0}:{1}."
                " Invalid msg_type value."
                " Discarding".format(remote_addr[0],
                                     remote_addr[1]))

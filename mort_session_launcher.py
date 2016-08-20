@@ -129,6 +129,16 @@ def main():
                                                                     session_servers_widget,
                                                                     active_sessions_widget)
 
+    active_sessions_widget.add_new_button_clicked_event_handler(new_active_session,
+                                                                active_sessions_widget)
+
+
+    active_sessions_widget.add_kill_button_clicked_event_handler(kill_active_session,
+                                                                 active_sessions_widget)
+    active_sessions_widget.add_kill_button_clicked_event_handler(fetch_active_sessions,
+                                                                 session_servers_widget,
+                                                                 active_sessions_widget)
+
     # A list of session-servers already seen and a lock to use
     # to arbitrate access from different threads
     known_servers = SessionServerList.SessionServerList()
@@ -274,6 +284,10 @@ def fetch_active_sessions(session_servers_widget, active_sessions_widget):
                 log.debug("Message is good. Contains {} entries.".format(len(sessions)))
                 for session in sessions:
                     active_sessions_widget.insert(-1, **session)
+                # Update the server info to identify where the entries came from
+                active_sessions_widget.set_server_info(server_info["Hostname"],
+                                                       server_info["IP Address"],
+                                                       server_info["Port"])
 
             else:
                 # Discard message; not active-sessions listing.
@@ -298,6 +312,145 @@ def fetch_active_sessions(session_servers_widget, active_sessions_widget):
                                     server_info["Port"]))
         log.warning(msg)
     log.debug("Done updating active-sessions widget.")
+
+
+
+def new_active_session(active_sessions_widget):
+    """
+
+    :param active_sessions_widget:
+    :return:
+    """
+    pass
+
+
+def kill_active_session(active_sessions_widget):
+    """
+
+    :param active_sessions_widget:
+    :return:
+    """
+    # Configure logging
+    log = logging.getLogger("kill_active_session")
+    # Get the server info
+    # :NOTE: If no item is selected, "None" will be returned, in which case,
+    #        don't proceed any further.
+    server_info = active_sessions_widget.get_server_info()
+    if (server_info["Hostname"] is None or
+        server_info["IP Address"] is None or
+        server_info["Port"] is None):
+        log.debug("No server info returned from active_sessions_widget.")
+        log.debug("Nothing to do. Returning early to caller.")
+        return
+
+    # Get the actgive session info
+    # :NOTE: If no item is selected, "None" will be returned, in which case,
+    #        don't proceed any further.
+    session_info = active_sessions_widget.get_selected_item_info()
+    if session_info is None:
+        log.debug("No session info returned from active_sessions_widget. Nothing selected?")
+        log.debug("Nothing to do. Returning early to caller.")
+        return
+
+    # Construct the request message
+    msg = ("msg_type:kill_active_session\n"
+           "pid:{}".format(session_info["PID"]))
+
+
+    # Construct a TCP socket to communicate with the server
+    try:
+        log.debug("Creating socket...")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    except OSError as ex:
+        msg = ("Unable to create TCP socket."
+               " Error No: {0}"
+               " Error Msg: {1}".format(ex.errno, ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Connect to the remote server
+    try:
+        log.debug("Connecting to server {0}:{1}...".format(server_info["IP Address"], server_info["Port"]))
+        sock.connect((server_info["IP Address"], server_info["Port"]))
+    except OSError as ex:
+        msg = ("Unable to connect to remote host."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Send the request
+    try:
+        log.debug("Sending list_active_sessions request...")
+        sock.sendall(msg.encode('utf8'))
+    except OSError as ex:
+        msg = ("Unable to send message to TCP socket."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Wait for the response then close the socket
+    log.debug("Waiting for response...")
+    resp = sock.recv(16384)
+    log.debug("Received {0} bytes".format(len(resp)))
+    resp = resp.decode('utf8')
+    log.debug("Closing socket")
+    sock.close()
+
+    # Break the response down into its key/value pairs
+    log.debug("Parsing message...")
+    resp_lines = resp.splitlines()
+    resp_fields = {}
+    for resp_line in resp_lines:
+        resp_field = resp_line.split(':', 1)
+        resp_fields[resp_field[0]] = resp_field[1]
+
+    # Check for the correct message type. If this isn't a kill_active_session_response
+    # message then discard it and move on.
+    if "msg_type" in resp_fields.keys():
+        if resp_fields["msg_type"] == "kill_active_session_response":
+            if "outcome" in resp_fields.keys():
+                if resp_fields["outcome"].lower() == "killed":
+                    log.info("Session killed.")
+                elif resp_fields["outcome"].lower() == "process not found":
+                    log.warning("Xvnc session process was not found. Was it killed alread?")
+                else:
+                    log.warning("Unexpected server reply: {}".format(resp_fields["outcome"]))
+            else:
+                # Discard message; missing outcome field
+                msg = ("Invalid kill active session response message from {0}:{1}."
+                       " Missing outcome field"
+                       " Discarding".format(server_info["IP Address"],
+                                            server_info["Port"]))
+                log.warning(msg)
+        else:
+            # Discard message; not a "kill_active_session_response" message
+            msg = ("Invalid kill active session response message from {0}:{1}."
+                   " Invalid msg_type value."
+                   " Discarding".format(server_info["IP Address"],
+                                        server_info["Port"]))
+            log.warning(msg)
+    else:
+        # Discard message; no msg_type field found.
+        msg = ("Invalid kill active session response message from {0}:{1}."
+               " Invalid msg_type value."
+               " Discarding".format(server_info["IP Address"],
+                                    server_info["Port"]))
+        log.warning(msg)
+    log.debug("Done.")
+
 
 
 
