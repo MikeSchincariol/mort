@@ -77,7 +77,7 @@ def main():
 
     # Create the GUI widgets
     root = Tk()
-    root.geometry("900x640")
+    root.geometry("900x768")
     root.title("Mort VNC Session Launcher", )
     root.grid()
     root.columnconfigure(0, weight=1)
@@ -346,8 +346,8 @@ def new_active_session(active_sessions_widget):
     form_info = form.get_info()
 
     # Check if the user wants to abort
-    if form.cancel_was_clicked:
-        log.debug("User clicked cancel.")
+    if not form.ok_was_clicked:
+        log.debug("User didn't click OK.")
         return
 
     # Construct the request message
