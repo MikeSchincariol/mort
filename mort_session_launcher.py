@@ -2,6 +2,7 @@
 
 import sys
 import os
+import subprocess
 import socket
 import threading
 import logging
@@ -143,6 +144,9 @@ def main():
                                                                  active_sessions_widget)
     active_sessions_widget.add_kill_button_clicked_event_handler(fetch_active_sessions,
                                                                  session_servers_widget,
+                                                                 active_sessions_widget)
+
+    active_sessions_widget.add_connect_button_clicked_event_handler(connect_to_active_session,
                                                                  active_sessions_widget)
 
     # A list of session-servers already seen and a lock to use
@@ -613,7 +617,37 @@ def kill_active_session(active_sessions_widget):
     log.debug("Done.")
 
 
+def connect_to_active_session(active_sessions_widget):
+    """
 
+    :param active_sessions_widget:
+    :return:
+    """
+    # Configure logging
+    log = logging.getLogger("connect_to_active_session")
+    # Get the server info
+    # :NOTE: If no item is selected, "None" will be returned, in which case,
+    #        don't proceed any further.
+    server_info = active_sessions_widget.get_server_info()
+    if (server_info["Hostname"] is None or
+        server_info["IP Address"] is None or
+        server_info["Port"] is None):
+        log.debug("No server info returned from active_sessions_widget.")
+        log.debug("Nothing to do. Returning early to caller.")
+        return
+
+    # Get the active session info
+    # :NOTE: If no item is selected, "None" will be returned, in which case,
+    #        don't proceed any further.
+    session_info = active_sessions_widget.get_selected_item_info()
+    if session_info is None:
+        log.debug("No session info returned from active_sessions_widget. Nothing selected?")
+        log.debug("Nothing to do. Returning early to caller.")
+        return
+
+    vnc_port = 5900+int(session_info["Display #"])
+    subprocess.call(["vncviewer", "{}:{}".format(server_info["IP Address"],
+                                                 vnc_port)])
 
 
 

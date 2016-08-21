@@ -42,9 +42,9 @@ class NewVNCSessionForm(object):
         self.display_name_entry.grid(column=1, columnspan=2, row=1, padx=4, pady=4, sticky=(N, S, E, W))
 
         # The session geometry label and boxes for width and height.
-        self.width_label = ttk.Label(self.toplevel, text="W", width=4)
+        self.width_label = ttk.Label(self.toplevel, text="Width", width=4)
         self.width_label.grid(column=1, row=2, padx=4, pady=4, sticky=(N, S, E, W))
-        self.height_label = ttk.Label(self.toplevel, text="H", width=4)
+        self.height_label = ttk.Label(self.toplevel, text="Height", width=4)
         self.height_label.grid(column=2, row=2, padx=4, pady=4, sticky=(N, S, E, W))
         self.geometry_label = ttk.Label(self.toplevel, text="Geometry")
         self.geometry_label.grid(column=0, row=3, padx=4, pady=4, sticky=(N, S, E, W))

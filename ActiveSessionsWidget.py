@@ -130,7 +130,7 @@ class ActiveSessionsWidget(object):
         # :NOTE: The Treeview is only expected to ever hold entries from one server
         #        at a time.
         self.server_hostname = None
-        self.server_ipaddress = None
+        self.server_ip_address = None
         self.server_port = None
 
         # A list of method references to call when the refresh button is clicked.
