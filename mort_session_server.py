@@ -15,6 +15,7 @@ import subprocess
 import re
 
 import ServerAnnounceTask
+import CreateNewVNCServer
 
 
 def main():
@@ -246,15 +247,44 @@ def handle_socket_task(sock, remote_addr):
             sock.sendall(resp.encode('utf8'))
 
         elif msg_fields["msg_type"] == "start_active_session":
-            # :TODO:
             # Pull out the params to call vncserver with
 
             # Confirm there are no vncservers running with the requested display
-
-            # Spawn / fork a vncserver process
-
-            # Return a response message
-            pass
+            active_sessions = get_xvnc_process_info()
+            for session in active_sessions:
+                if session["display_number"] == msg_fields["display_number"]:
+                    log.debug("Found session already running on display {}".format(msg_fields["display_number"]))
+                    resp = ("msg_type:start_active_session_response\n"
+                            "outcome:display in use\n")
+                    break
+            else:
+                # No VNC process is running using the display we want to use.
+                # However, check there is no leftover lock or pipe file.
+                x_display_lock_file_path = "/tmp/.X{}-lock".format(msg_fields["display_number"])
+                if os.path.exists(x_display_lock_file_path):
+                    log.debug("Found X11 lock file @ {}".format(x_display_lock_file_path))
+                    os.remove(x_display_lock_file_path)
+                x_display_pipe_file_path = "/tmp/.X11-unix/X{}".format(msg_fields["display_number"])
+                if os.path.exists(x_display_pipe_file_path):
+                    log.debug("Found X11 pipe file @ {}".format(x_display_pipe_file_path))
+                    os.remove(x_display_pipe_file_path)
+                # Start a new VNC server
+                log.debug("Creating VNC server for user: {}, disp: {}, name: {}, geo: {}, pf: {}".format(msg_fields["username"],
+                                                                                                         msg_fields["display_number"],
+                                                                                                         msg_fields["display_name"],
+                                                                                                         msg_fields["geometry"],
+                                                                                                         msg_fields["pixelformat"]))
+                new_server = CreateNewVNCServer.CreateNewVNCServer("create_new_vnc_server",
+                                                                   msg_fields["username"],
+                                                                   msg_fields["display_number"],
+                                                                   msg_fields["display_name"],
+                                                                   msg_fields["geometry"],
+                                                                   msg_fields["pixelformat"])
+                new_server.start()
+                resp = ("msg_type:start_active_session_response\n"
+                        "outcome:success\n")
+            # Send the response back to the caller
+            sock.sendall(resp.encode('utf8'))
 
         elif msg_fields["msg_type"] == "kill_active_session":
             # Get the PID of the Xvnc process to kill from the message

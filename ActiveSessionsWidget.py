@@ -146,8 +146,8 @@ class ActiveSessionsWidget(object):
         self.connect_button_clicked_handlers = []
 
         # Insert some dummy items into the TreeView while stubbing out the code.
-        self.insert(-1, "mschinca", "300", "test", 14720, "1920x1020", "RGB888")
-        self.insert(-1, "bklow", "55", "test313", 2709, "1280x720", "RGB565")
+        # self.insert(-1, "mschinca", "300", "test", 14720, "1920x1020", "RGB888")
+        # self.insert(-1, "bklow", "55", "test313", 2709, "1280x720", "RGB565")
 
     def clear(self):
         """

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 import socket
 import threading
 import logging
@@ -8,8 +9,10 @@ import logging.handlers
 import LogFilter
 import queue
 import json
+import time
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox
 from PIL import ImageTk, Image
 
 import SessionServerList
@@ -20,6 +23,7 @@ import SessionServersWidget
 import ActiveSessionsWidget
 import RegisteredSessionsWidget
 import LogBoxWidget
+import NewVNCSessionForm
 
 def main():
     """
@@ -131,7 +135,9 @@ def main():
 
     active_sessions_widget.add_new_button_clicked_event_handler(new_active_session,
                                                                 active_sessions_widget)
-
+    active_sessions_widget.add_new_button_clicked_event_handler(fetch_active_sessions,
+                                                                session_servers_widget,
+                                                                active_sessions_widget)
 
     active_sessions_widget.add_kill_button_clicked_event_handler(kill_active_session,
                                                                  active_sessions_widget)
@@ -321,7 +327,149 @@ def new_active_session(active_sessions_widget):
     :param active_sessions_widget:
     :return:
     """
-    pass
+    # Configure logging
+    log = logging.getLogger("new_active_session")
+    # Get the server info
+    # :NOTE: If no item is selected, "None" will be returned, in which case,
+    #        don't proceed any further.
+    server_info = active_sessions_widget.get_server_info()
+    if (server_info["Hostname"] is None or
+        server_info["IP Address"] is None or
+        server_info["Port"] is None):
+        log.debug("No server info returned from active_sessions_widget.")
+        log.debug("Nothing to do. Returning early to caller.")
+        return
+
+    # Get the parameters of the new server to create
+    form = NewVNCSessionForm.NewVNCSessionForm()
+    form.show()
+    form_info = form.get_info()
+
+    # Check if the user wants to abort
+    if form.cancel_was_clicked:
+        log.debug("User clicked cancel.")
+        return
+
+    # Construct the request message
+    username = os.environ["USER"]
+    msg = ("msg_type:start_active_session\n"
+           "username:{0}\n"
+           "display_number:{1[display_number]}\n"
+           "display_name:{1[display_name]}\n"
+           "geometry:{1[geometry]}\n"
+           "pixelformat:{1[pixelformat]}\n").format(username, form_info)
+
+    # Construct a TCP socket to communicate with the server
+    try:
+        log.debug("Creating socket...")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    except OSError as ex:
+        msg = ("Unable to create TCP socket."
+               " Error No: {0}"
+               " Error Msg: {1}".format(ex.errno, ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Connect to the remote server
+    try:
+        log.debug("Connecting to server {0}:{1}...".format(server_info["IP Address"], server_info["Port"]))
+        sock.connect((server_info["IP Address"], server_info["Port"]))
+    except OSError as ex:
+        msg = ("Unable to connect to remote host."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Send the request
+    try:
+        log.debug("Sending start_active_session request...")
+        sock.sendall(msg.encode('utf8'))
+    except OSError as ex:
+        msg = ("Unable to send message to TCP socket."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        raise
+
+    # Wait for the response then close the socket
+    log.debug("Waiting for response...")
+    resp = sock.recv(16384)
+    log.debug("Received {0} bytes".format(len(resp)))
+    resp = resp.decode('utf8')
+    log.debug("Closing socket")
+    sock.close()
+
+    # Break the response down into its key/value pairs
+    log.debug("Parsing message...")
+    resp_lines = resp.splitlines()
+    resp_fields = {}
+    for resp_line in resp_lines:
+        resp_field = resp_line.split(':', 1)
+        resp_fields[resp_field[0]] = resp_field[1]
+
+   # Check for the correct message type. If this isn't a strart_active_session_response
+    # message then discard it and move on.
+    if "msg_type" in resp_fields.keys():
+        if resp_fields["msg_type"] == "start_active_session_response":
+            if "outcome" in resp_fields.keys():
+                if resp_fields["outcome"].lower() == "success":
+                    log.info("Session started.")
+                    messagebox.showinfo(title="Start New Session Feedback",
+                                        message="Success - New session created on {}, display {}".format(server_info["IP Address"],
+                                                                                                         form_info["display_number"]),
+                                        icon="info",
+                                        default="ok")
+                elif resp_fields["outcome"].lower() == "display in use":
+                    log.warning("The display number selected is already in use.")
+                    messagebox.showinfo(title="Start New Session Feedback",
+                                        message="The display number chosen is alread in use",
+                                        icon="warning",
+                                        default="ok")
+                else:
+                    log.warning("Unexpected server reply: {}".format(resp_fields["outcome"]))
+                    messagebox.showinfo(title="Start New Session Feedback",
+                                        message="Unexpected reply from server",
+                                        icon="warning",
+                                        default="ok")
+            else:
+                # Discard message; missing outcome field
+                msg = ("Invalid start active session response message from {0}:{1}."
+                       " Missing outcome field"
+                       " Discarding".format(server_info["IP Address"],
+                                            server_info["Port"]))
+                log.warning(msg)
+        else:
+            # Discard message; not a "start_active_session_response" message
+            msg = ("Invalid start active session response message from {0}:{1}."
+                   " Invalid msg_type value."
+                   " Discarding".format(server_info["IP Address"],
+                                        server_info["Port"]))
+            log.warning(msg)
+    else:
+        # Discard message; no msg_type field found.
+        msg = ("Invalid start active session response message from {0}:{1}."
+               " Invalid msg_type value."
+               " Discarding".format(server_info["IP Address"],
+                                    server_info["Port"]))
+        log.warning(msg)
+    # :TODO: Fix this hack! It's gross. I'm personally offended by it :)
+    # Wait a few seconds for the server process to startup before leaving this
+    # method so that the widget update will see the new process.
+    # :NOTE: This is a HACK!!!! There has to be a better way.
+    time.sleep(2)
+    log.debug("Done.")
 
 
 def kill_active_session(active_sessions_widget):
@@ -343,7 +491,7 @@ def kill_active_session(active_sessions_widget):
         log.debug("Nothing to do. Returning early to caller.")
         return
 
-    # Get the actgive session info
+    # Get the active session info
     # :NOTE: If no item is selected, "None" will be returned, in which case,
     #        don't proceed any further.
     session_info = active_sessions_widget.get_selected_item_info()
@@ -424,10 +572,23 @@ def kill_active_session(active_sessions_widget):
             if "outcome" in resp_fields.keys():
                 if resp_fields["outcome"].lower() == "killed":
                     log.info("Session killed.")
+                    messagebox.showinfo(title="Kill Seession Feedback",
+                                        message="Success - session terminated!",
+                                        icon="info",
+                                        default="ok")
                 elif resp_fields["outcome"].lower() == "process not found":
-                    log.warning("Xvnc session process was not found. Was it killed alread?")
+                    log.warning("Xvnc session process was not found. Was it killed already?")
+                    messagebox.showinfo(title="Kill Session Feedback",
+                                        message="Xvnc session process was not found. Was it killed already?",
+                                        icon="warning",
+                                        default="ok")
                 else:
                     log.warning("Unexpected server reply: {}".format(resp_fields["outcome"]))
+                    log.warning("Unexpected server reply: {}".format(resp_fields["outcome"]))
+                    messagebox.showinfo(title="Start New Session Feedback",
+                                        message="Unexpected reply from server",
+                                        icon="warning",
+                                        default="ok")
             else:
                 # Discard message; missing outcome field
                 msg = ("Invalid kill active session response message from {0}:{1}."
