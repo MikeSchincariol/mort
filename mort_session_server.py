@@ -144,7 +144,13 @@ def get_xvnc_process_info():
 
     # Get a list of all the Xvnc processes running
     log.debug("Querying list of Xvnc processes from OS...")
-    process_list = subprocess.check_output(["ps", "--no-header", "-ww", "-C", "Xvnc", "-o", "user,pid,args"])
+    try:
+        process_list = subprocess.check_output(["ps", "--no-header", "-ww", "-C", "Xvnc", "-o", "user=WIDE-USER-COLUMN,pid,args"])
+    except subprocess.CalledProcessError:
+        # If 'ps' returns nothing, it sets the returncode to '1', which causes the
+        # CalledProcessError exception to be thrown. In this case, it is ok for
+        # there to be no Xvnc processes running and thus nothing for ps to return.
+        process_list = b""
     process_list = process_list.decode('utf8')
     process_list = process_list.splitlines()
 
@@ -152,7 +158,7 @@ def get_xvnc_process_info():
     active_sessions = []
     log.debug("Parsing Xvnc process list...")
     for process in process_list:
-        matches = re.search(r"^(?P<username>\w+)\s+(?P<pid>\d+)\s+(?P<exe>[\w/]+)\s+(?P<args>.+$)",
+        matches = re.search(r"^(?P<username>(\w|-)+)\s+(?P<pid>\d+)\s+(?P<exe>[\w/]+)\s+(?P<args>.+$)",
                             process)
         username, pid, exe, args = matches.group("username", "pid", "exe", "args")
 
