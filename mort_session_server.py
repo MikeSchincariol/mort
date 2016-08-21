@@ -13,6 +13,7 @@ import logging.handlers
 import json
 import subprocess
 import re
+import configparser
 
 import ServerAnnounceTask
 import CreateNewVNCServer
@@ -23,6 +24,21 @@ def main():
 
     :return:
     """
+    # Determine where the source code is to be found
+    # :NOTE: Refer to documentation of sys.path for why this works.
+    SRC_DIR = os.path.abspath(sys.path[0])
+
+    # Open the config file for reading
+    cfg = configparser.ConfigParser()
+    cfg.read(SRC_DIR+"/server.ini")
+
+    # A dictionary to map the log level string from the config file, to
+    # the log level constant used by the Python logging module.
+    loglevel_string_to_constant = {"DEBUG":    logging.DEBUG,
+                                   "INFO":     logging.INFO,
+                                   "WARNING":  logging.WARNING,
+                                   "ERROR":    logging.ERROR,
+                                   "CRITICAL": logging.CRITICAL}
 
     # Configure a log file, to write log messages into, that auto-rotates when
     # it reaches a certain size.
@@ -32,7 +48,7 @@ def main():
                                                                 backupCount=3)
     logging.basicConfig(format="{asctime:11} :{levelname:10}: {name:22}({lineno:4}) - {message}",
                         style="{",
-                        level=logging.DEBUG,
+                        level=loglevel_string_to_constant[cfg.get("LOGGING", "file_level", fallback="DEBUG")],
                         handlers=[rotating_log_handler])
 
     # Get a new logger to use

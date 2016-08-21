@@ -1,10 +1,13 @@
+import sys
+import os
 import threading
 import socket
 import time
 import random
 import string
 import logging
-
+import configparser
+import json
 
 class ServerAnnounceTask(threading.Thread):
     """
@@ -24,9 +27,20 @@ class ServerAnnounceTask(threading.Thread):
         # doesn't prevent the caller from exiting.
         super().__init__(name="announce_thread", daemon=True)
 
+        # Determine where the source code is to be found
+        # :NOTE: Refer to documentation of sys.path for why this works.
+        self.SRC_DIR = os.path.abspath(sys.path[0])
+
         # Configure logging
         self.log = logging.getLogger("ServerAnnounceTask")
         self.log.info("Mort ServerAnnounceTask starting up...")
+
+        # Load config information from the config file
+        cfg = configparser.ConfigParser()
+        cfg.read(self.SRC_DIR+"/server.ini")
+        self.use_broadcast_announce = cfg.getboolean("ANNOUNCE_TASK", "use_broadcast_announce", fallback=True)
+        self.use_unicast_announce = cfg.getboolean("ANNOUNCE_TASK", "use_unicast_announce", fallback=False)
+        self.unicast_announce_hosts = json.loads(cfg.get("ANNOUNCE_TASK", "unicast_announce_to_hosts", fallback=[]))
 
         # Store up the data for the announce message
         self.ip_address = announce_ip_address
@@ -59,7 +73,14 @@ class ServerAnnounceTask(threading.Thread):
         """
         while True:
             try:
-                self.sock.sendto(self.msg.encode('utf8'), ("<broadcast>", 42124))
+                # Send an announce message via broadcast if configured to
+                if self.use_broadcast_announce:
+                    self.sock.sendto(self.msg.encode('utf8'), ("<broadcast>", 42124))
+                # Send an announce message via unicast if configured to.
+                if self.use_unicast_announce:
+                    for address in self.unicast_announce_hosts:
+                        self.sock.sendto(self.msg.encode('utf8'), (address, 42124))
+
             except OSError as ex:
                 msg = ("Unable to send session-server announce message."
                        " Error No: {0}"

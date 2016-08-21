@@ -15,6 +15,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
 from PIL import ImageTk, Image
+import configparser
 
 import SessionServerList
 import LauncherAnnounceTask
@@ -36,6 +37,18 @@ def main():
     # :NOTE: Refer to documentation of sys.path for why this works.
     SRC_DIR = os.path.abspath(sys.path[0])
 
+    # Open the config file for reading
+    cfg = configparser.ConfigParser()
+    cfg.read(SRC_DIR+"/launcher.ini")
+
+    # A dictionary to map the log level string from the config file, to
+    # the log level constant used by the Python logging module.
+    loglevel_string_to_constant = {"DEBUG":    logging.DEBUG,
+                                   "INFO":     logging.INFO,
+                                   "WARNING":  logging.WARNING,
+                                   "ERROR":    logging.ERROR,
+                                   "CRITICAL": logging.CRITICAL}
+
     # Configure a log filter to dissallow messages from the PIL module
     pil_log_filter = LogFilter.Filter("PIL")
 
@@ -45,23 +58,23 @@ def main():
                                                                 mode='a',
                                                                 maxBytes=1E6,
                                                                 backupCount=3)
-    rotating_log_handler.setLevel(logging.DEBUG)
+    rotating_log_handler.setLevel(loglevel_string_to_constant[cfg.get("LOGGING", "file_level", fallback="INFO")])
     rotating_log_handler.addFilter(pil_log_filter)
 
     # Configure a stdout log handler to print all messages
     stdout_log_handler = logging.StreamHandler(stream=sys.stdout)
-    stdout_log_handler.setLevel(logging.DEBUG)
+    stdout_log_handler.setLevel(loglevel_string_to_constant[cfg.get("LOGGING", "stdout_level", fallback="INFO")])
     stdout_log_handler.addFilter(pil_log_filter)
 
     # Configure a stderr log handler to print only ERROR messages and above
     stderr_log_handler = logging.StreamHandler(stream=sys.stderr)
-    stderr_log_handler.setLevel(logging.ERROR)
+    stderr_log_handler.setLevel(loglevel_string_to_constant[cfg.get("LOGGING", "stderr_level", fallback="INFO")])
     stderr_log_handler.addFilter(pil_log_filter)
 
     # Configure a queue log handler to print all messages to the GUI log box
     log_queue = queue.Queue()
     queue_log_handler = logging.handlers.QueueHandler(log_queue)
-    queue_log_handler.setLevel(logging.DEBUG)
+    queue_log_handler.setLevel(loglevel_string_to_constant[cfg.get("LOGGING", "logbox_level", fallback="INFO")])
     queue_log_handler.addFilter(pil_log_filter)
 
     logging.basicConfig(format="{asctime:11} :{levelname:10}: {name:22}({lineno:4}) - {message}",
@@ -433,7 +446,9 @@ def new_active_session(active_sessions_widget):
         if resp_fields["msg_type"] == "start_active_session_response":
             if "outcome" in resp_fields.keys():
                 if resp_fields["outcome"].lower() == "success":
-                    log.info("Session started.")
+                    log.info("Session Started- svr={0[IP Address]}:{0[Port]} uname={1} disp={2[display_number]}".format(server_info,
+                                                                                                                        username,
+                                                                                                                        form_info))
                     messagebox.showinfo(title="Start New Session Feedback",
                                         message="Success - New session created on {}, display {}".format(server_info["IP Address"],
                                                                                                          form_info["display_number"]),
@@ -579,7 +594,8 @@ def kill_active_session(active_sessions_widget):
         if resp_fields["msg_type"] == "kill_active_session_response":
             if "outcome" in resp_fields.keys():
                 if resp_fields["outcome"].lower() == "killed":
-                    log.info("Session killed.")
+                    log.info("Session killed - svr={0[IP Address]}:{0[Port]} uname={1[Username]} disp={1[Display #]}".format(server_info,
+                                                                                                                             session_info))
                     messagebox.showinfo(title="Kill Seession Feedback",
                                         message="Success - session terminated!",
                                         icon="info",
