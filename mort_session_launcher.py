@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-import os
+import os.path
 import subprocess
 import socket
 import threading
@@ -31,6 +31,10 @@ def main():
 
     :return:
     """
+
+    # Determine where the source code is to be found
+    # :NOTE: Refer to documentation of sys.path for why this works.
+    SRC_DIR = os.path.abspath(sys.path[0])
 
     # Configure a log filter to dissallow messages from the PIL module
     pil_log_filter = LogFilter.Filter("PIL")
@@ -115,7 +119,7 @@ def main():
     log_box_widget = LogBoxWidget.LogBoxWidget(v_panes0, log_queue)
 
     #
-    exit_button_icon = Image.open("./icons/user_exit.png")
+    exit_button_icon = Image.open(SRC_DIR+"/icons/user_exit.png")
     exit_button_icon = exit_button_icon.resize((12, 15), Image.BICUBIC)
     exit_button_icon = ImageTk.PhotoImage(exit_button_icon)
     exit_button = ttk.Button(v_panes0,

@@ -1,3 +1,5 @@
+import sys
+import os.path
 import threading
 import logging
 import logging.handlers
@@ -19,6 +21,10 @@ class RegisteredSessionsWidget(object):
 
         :param parent: A Tk widget that acts as the parent to this widget.
         """
+        # Determine where the source code is to be found
+        # :NOTE: Refer to documentation of sys.path for why this works.
+        self.SRC_DIR = os.path.abspath(sys.path[0])
+
         # Configure logging
         self.log = logging.getLogger("RegisteredSessionsWidget")
         self.log.debug("Constructing the registered-sessions widget...")
@@ -27,17 +33,17 @@ class RegisteredSessionsWidget(object):
         self.parent = parent
 
         # Open the icon used for the registered-session icon
-        self.registered_session_icon = Image.open("./icons/squid-ink/Office/png_32/Notebook-2.png")
+        self.registered_session_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Office/png_32/Notebook-2.png")
         self.registered_session_icon = self.registered_session_icon.resize((16, 16), Image.BICUBIC)
         self.registered_session_icon = ImageTk.PhotoImage(self.registered_session_icon)
 
         # Open the icon used for the geometry information
-        self.geometry_icon = Image.open("./icons/squid-ink/Office/png_32/Square-Ruler.png")
+        self.geometry_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Office/png_32/Square-Ruler.png")
         self.geometry_icon = self.geometry_icon.resize((16, 16), Image.BICUBIC)
         self.geometry_icon = ImageTk.PhotoImage(self.geometry_icon)
 
         # Open the icon used for the pixelformat information
-        self.pixelformat_icon = Image.open("./icons/squid-ink/Editing/png_32/Hue.png")
+        self.pixelformat_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Editing/png_32/Hue.png")
         self.pixelformat_icon = self.pixelformat_icon.resize((16, 16), Image.BICUBIC)
         self.pixelformat_icon = ImageTk.PhotoImage(self.pixelformat_icon)
 
@@ -63,7 +69,7 @@ class RegisteredSessionsWidget(object):
         self.registered_sessions_tv.heading(column="Display Name", text="Display Name")
 
         # Add the refresh registered-sessions button
-        self.refresh_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Refresh.png")
+        self.refresh_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Refresh.png")
         self.refresh_button_icon = self.refresh_button_icon.resize((24, 24), Image.BICUBIC)
         self.refresh_button_icon = ImageTk.PhotoImage(self.refresh_button_icon)
 
@@ -74,7 +80,7 @@ class RegisteredSessionsWidget(object):
         self.refresh_button.grid(column=0, row=2, sticky=(N, S, E, W))
 
         # Add the new registered-session button
-        self.new_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Plus.png")
+        self.new_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Plus.png")
         self.new_button_icon = self.new_button_icon.resize((24, 24), Image.BICUBIC)
         self.new_button_icon = ImageTk.PhotoImage(self.new_button_icon)
 
@@ -85,7 +91,7 @@ class RegisteredSessionsWidget(object):
         self.new_button.grid(column=1, row=2, sticky=(N, S, E, W))
 
         # Add the delete registered-session button
-        self.delete_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Remove.png")
+        self.delete_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Remove.png")
         self.delete_button_icon = self.delete_button_icon.resize((24, 24), Image.BICUBIC)
         self.delete_button_icon = ImageTk.PhotoImage(self.delete_button_icon)
 
@@ -96,7 +102,7 @@ class RegisteredSessionsWidget(object):
         self.delete_button.grid(column=2, row=2, sticky=(N, S, E, W))
 
         # Add the start registered-session button
-        self.start_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Play.png")
+        self.start_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Play.png")
         self.start_button_icon = self.start_button_icon.resize((24, 24), Image.BICUBIC)
         self.start_button_icon = ImageTk.PhotoImage(self.start_button_icon)
 

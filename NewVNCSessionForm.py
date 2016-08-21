@@ -1,3 +1,5 @@
+import sys
+import os.path
 from tkinter import *
 from tkinter import ttk
 from PIL import ImageTk, Image
@@ -17,6 +19,10 @@ class NewVNCSessionForm(object):
 
         :param parent: A Tk widget that acts as the parent to this widget.
         """
+        # Determine where the source code is to be found
+        # :NOTE: Refer to documentation of sys.path for why this works.
+        self.SRC_DIR = os.path.abspath(sys.path[0])
+
         # Configure logging
         self.log = logging.getLogger("ActiveSessionsWidget")
         self.log.debug("Constructing the active-sessions widget...")
@@ -72,7 +78,7 @@ class NewVNCSessionForm(object):
         self.frame.columnconfigure((0,2,3), weight=1)
 
 
-        self.ok_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Ok.png")
+        self.ok_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Ok.png")
         self.ok_button_icon = self.ok_button_icon.resize((24, 24), Image.BICUBIC)
         self.ok_button_icon = ImageTk.PhotoImage(self.ok_button_icon)
         self.ok_button = ttk.Button(self.frame,
@@ -82,7 +88,7 @@ class NewVNCSessionForm(object):
                                     command=self._on_ok_clicked)
         self.ok_button.grid(column=0, columnspan=2, row=0, padx=4, pady=4, sticky=(N, S, E, W))
 
-        self.cancel_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Block.png")
+        self.cancel_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Block.png")
         self.cancel_button_icon = self.cancel_button_icon.resize((24, 24), Image.BICUBIC)
         self.cancel_button_icon = ImageTk.PhotoImage(self.cancel_button_icon)
         self.cancel_button = ttk.Button(self.frame,

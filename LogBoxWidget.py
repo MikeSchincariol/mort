@@ -1,3 +1,5 @@
+import sys
+import os.path
 import threading
 import logging
 import logging.handlers
@@ -19,6 +21,10 @@ class LogBoxWidget(object):
         :param queue: A queue.Queue that the widget will watch for logging.LogRecord
                       items to display in the log box.
         """
+        # Determine where the source code is to be found
+        # :NOTE: Refer to documentation of sys.path for why this works.
+        self.SRC_DIR = os.path.abspath(sys.path[0])
+
         # Configure logging
         self.log = logging.getLogger("LogBoxWidget")
         self.log.debug("Constructing the log-box widget...")
@@ -32,27 +38,27 @@ class LogBoxWidget(object):
         # Create a dictionary of icons to use for the various message types.
         self.msg_icons = {}
 
-        icon = Image.open("./icons/squid-ink/Files & Folders/png_32/File-Settings.png")
+        icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Files & Folders/png_32/File-Settings.png")
         icon = icon.resize((12, 15), Image.BICUBIC)
         icon = ImageTk.PhotoImage(icon)
         self.msg_icons['DEBUG'] = icon
 
-        icon = Image.open("./icons/squid-ink/Files & Folders/png_32/File-Checked-3.png")
+        icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Files & Folders/png_32/File-Checked-3.png")
         icon = icon.resize((12, 15), Image.BICUBIC)
         icon = ImageTk.PhotoImage(icon)
         self.msg_icons['INFO'] = icon
 
-        icon = Image.open("./icons/squid-ink/Files & Folders/png_32/File-Favorite.png")
+        icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Files & Folders/png_32/File-Favorite.png")
         icon = icon.resize((12, 15), Image.BICUBIC)
         icon = ImageTk.PhotoImage(icon)
         self.msg_icons['WARNING'] = icon
 
-        icon = Image.open("./icons/squid-ink/Files & Folders/png_32/File-Error.png")
+        icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Files & Folders/png_32/File-Error.png")
         icon = icon.resize((12, 15), Image.BICUBIC)
         icon = ImageTk.PhotoImage(icon)
         self.msg_icons['ERROR'] = icon
 
-        icon = Image.open("./icons/squid-ink/Files & Folders/png_32/File-Heart.png")
+        icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Files & Folders/png_32/File-Heart.png")
         icon = icon.resize((16, 16), Image.BICUBIC)
         icon = ImageTk.PhotoImage(icon)
         self.msg_icons['CRITICAL'] = icon

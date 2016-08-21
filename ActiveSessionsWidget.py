@@ -1,3 +1,5 @@
+import sys
+import os.path
 import threading
 import logging
 import logging.handlers
@@ -19,6 +21,10 @@ class ActiveSessionsWidget(object):
 
         :param parent: A Tk widget that acts as the parent to this widget.
         """
+        # Determine where the source code is to be found
+        # :NOTE: Refer to documentation of sys.path for why this works.
+        self.SRC_DIR = os.path.abspath(sys.path[0])
+
         # Configure logging
         self.log = logging.getLogger("ActiveSessionsWidget")
         self.log.debug("Constructing the active-sessions widget...")
@@ -27,17 +33,17 @@ class ActiveSessionsWidget(object):
         self.parent = parent
 
         # Open the icon used for the session icon
-        self.session_icon = Image.open("./icons/squid-ink/User Interface/png_32/Application-Modal.png")
+        self.session_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/User Interface/png_32/Application-Modal.png")
         self.session_icon = self.session_icon.resize((16, 16), Image.BICUBIC)
         self.session_icon = ImageTk.PhotoImage(self.session_icon)
 
         # Open the icon used for the geometry information
-        self.geometry_icon = Image.open("./icons/squid-ink/Office/png_32/Square-Ruler.png")
+        self.geometry_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Office/png_32/Square-Ruler.png")
         self.geometry_icon = self.geometry_icon.resize((16, 16), Image.BICUBIC)
         self.geometry_icon = ImageTk.PhotoImage(self.geometry_icon)
 
         # Open the icon used for the pixelformat information
-        self.pixelformat_icon = Image.open("./icons/squid-ink/Editing/png_32/Hue.png")
+        self.pixelformat_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Editing/png_32/Hue.png")
         self.pixelformat_icon = self.pixelformat_icon.resize((16, 16), Image.BICUBIC)
         self.pixelformat_icon = ImageTk.PhotoImage(self.pixelformat_icon)
 
@@ -65,7 +71,7 @@ class ActiveSessionsWidget(object):
         self.active_sessions_tv.heading(column="PID", text="PID")
 
         # Add the refresh active-sessions button
-        self.refresh_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Refresh.png")
+        self.refresh_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Refresh.png")
         self.refresh_button_icon = self.refresh_button_icon.resize((24, 24), Image.BICUBIC)
         self.refresh_button_icon = ImageTk.PhotoImage(self.refresh_button_icon)
 
@@ -77,7 +83,7 @@ class ActiveSessionsWidget(object):
         self.refresh_button.grid(column=0, row=2, sticky=(N, S, E, W))
 
         # Add the new session button
-        self.new_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Plus.png")
+        self.new_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Plus.png")
         self.new_button_icon = self.new_button_icon.resize((24, 24), Image.BICUBIC)
         self.new_button_icon = ImageTk.PhotoImage(self.new_button_icon)
 
@@ -89,7 +95,7 @@ class ActiveSessionsWidget(object):
         self.new_button.grid(column=1, row=2, sticky=(N, S, E, W))
 
         # Add the kill active-session button
-        self.kill_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Remove.png")
+        self.kill_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Remove.png")
         self.kill_button_icon = self.kill_button_icon.resize((24, 24), Image.BICUBIC)
         self.kill_button_icon = ImageTk.PhotoImage(self.kill_button_icon)
 
@@ -101,7 +107,7 @@ class ActiveSessionsWidget(object):
         self.kill_button.grid(column=2, row=2, sticky=(N, S, E, W))
 
         # Add the connect to active-session button
-        self.connect_button_icon = Image.open("./icons/squid-ink/Controls & Navigation/png_32/Expand.png")
+        self.connect_button_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Controls & Navigation/png_32/Expand.png")
         self.connect_button_icon = self.connect_button_icon.resize((24, 24), Image.BICUBIC)
         self.connect_button_icon = ImageTk.PhotoImage(self.connect_button_icon)
 

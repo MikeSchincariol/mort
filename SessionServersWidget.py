@@ -1,3 +1,5 @@
+import sys
+import os
 import threading
 import logging
 import logging.handlers
@@ -20,6 +22,10 @@ class SessionServersWidget(object):
 
         :param parent: A Tk widget that acts as the parent to this widget.
         """
+        # Determine where the source code is to be found
+        # :NOTE: Refer to documentation of sys.path for why this works.
+        self.SRC_DIR = os.path.abspath(sys.path[0])
+
         # Configure logging
         self.log = logging.getLogger("SessionServersWidget")
         self.log.debug("Constructing the session-servers widget...")
@@ -28,7 +34,7 @@ class SessionServersWidget(object):
         self.parent = parent
 
         # Open the icon used for the server icon
-        self.server_icon = Image.open("./icons/squid-ink/Devices & Network/png_32/Server.png")
+        self.server_icon = Image.open(self.SRC_DIR+"/icons/squid-ink/Devices & Network/png_32/Server.png")
         self.server_icon = self.server_icon.resize((16, 16), Image.BICUBIC)
         self.server_icon = ImageTk.PhotoImage(self.server_icon)
 
