@@ -3,6 +3,7 @@
 import sys
 import os.path
 import subprocess
+import multiprocessing
 import socket
 import threading
 import logging
@@ -665,11 +666,15 @@ def connect_to_active_session(active_sessions_widget):
         log.debug("Nothing to do. Returning early to caller.")
         return
 
+    # Start a VNC viewer
+    # :NOTE: This viewer is started in a separate process so that the
+    #        launcher process can continue without having to wait until
+    #        the viewer is exited.
     vnc_port = 5900+int(session_info["Display #"])
-    subprocess.call(["vncviewer", "{}:{}".format(server_info["IP Address"],
-                                                 vnc_port)])
-
-
+    args = []
+    args.append("vncviewer")
+    args.append("{}:{}".format(server_info["IP Address"], vnc_port))
+    subprocess.Popen(args)
 
 if __name__ == "__main__":
     main()
