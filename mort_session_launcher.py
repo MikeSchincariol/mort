@@ -674,7 +674,7 @@ def connect_to_active_session(active_sessions_widget):
     args = []
     args.append("vncviewer")
     args.append("{}:{}".format(server_info["IP Address"], vnc_port))
-    subprocess.Popen(args)
+    subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 if __name__ == "__main__":
     main()
