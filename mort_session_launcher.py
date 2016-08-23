@@ -244,12 +244,13 @@ def fetch_active_sessions(session_servers_widget, active_sessions_widget):
         log.debug("Creating socket...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(5)
     except OSError as ex:
         msg = ("Unable to create TCP socket."
                " Error No: {0}"
                " Error Msg: {1}".format(ex.errno, ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Connect to the remote server
     try:
@@ -265,7 +266,7 @@ def fetch_active_sessions(session_servers_widget, active_sessions_widget):
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Send the request
     try:
@@ -281,15 +282,29 @@ def fetch_active_sessions(session_servers_widget, active_sessions_widget):
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Wait for the response then close the socket
-    log.debug("Waiting for response...")
-    resp = sock.recv(16384)
-    log.debug("Received {0} bytes".format(len(resp)))
-    resp = resp.decode('utf8')
-    log.debug("Closing socket")
-    sock.close()
+    try:
+        log.debug("Waiting for response...")
+        resp = sock.recv(16384)
+    except OSError as ex:
+        msg = ("Did not receive response from server."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        return
+    else:
+        log.debug("Received {0} bytes".format(len(resp)))
+        resp = resp.decode('utf8')
+    finally:
+        log.debug("Closing socket")
+        sock.close()
 
     # Break the response down into its key/value pairs
     log.debug("Parsing message...")
@@ -386,12 +401,13 @@ def new_active_session(active_sessions_widget):
         log.debug("Creating socket...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(5)
     except OSError as ex:
         msg = ("Unable to create TCP socket."
                " Error No: {0}"
                " Error Msg: {1}".format(ex.errno, ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Connect to the remote server
     try:
@@ -407,7 +423,7 @@ def new_active_session(active_sessions_widget):
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Send the request
     try:
@@ -423,15 +439,29 @@ def new_active_session(active_sessions_widget):
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Wait for the response then close the socket
-    log.debug("Waiting for response...")
-    resp = sock.recv(16384)
-    log.debug("Received {0} bytes".format(len(resp)))
-    resp = resp.decode('utf8')
-    log.debug("Closing socket")
-    sock.close()
+    try:
+        log.debug("Waiting for response...")
+        resp = sock.recv(16384)
+    except OSError as ex:
+        msg = ("Did not receive response from server."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        return
+    else:
+        log.debug("Received {0} bytes".format(len(resp)))
+        resp = resp.decode('utf8')
+    finally:
+        log.debug("Closing socket")
+        sock.close()
 
     # Break the response down into its key/value pairs
     log.debug("Parsing message...")
@@ -534,12 +564,13 @@ def kill_active_session(active_sessions_widget):
         log.debug("Creating socket...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(5)
     except OSError as ex:
         msg = ("Unable to create TCP socket."
                " Error No: {0}"
                " Error Msg: {1}".format(ex.errno, ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Connect to the remote server
     try:
@@ -555,7 +586,7 @@ def kill_active_session(active_sessions_widget):
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Send the request
     try:
@@ -571,15 +602,29 @@ def kill_active_session(active_sessions_widget):
                                         ex.errno,
                                         ex.strerror))
         log.critical(msg)
-        raise
+        return
 
     # Wait for the response then close the socket
-    log.debug("Waiting for response...")
-    resp = sock.recv(16384)
-    log.debug("Received {0} bytes".format(len(resp)))
-    resp = resp.decode('utf8')
-    log.debug("Closing socket")
-    sock.close()
+    try:
+        log.debug("Waiting for response...")
+        resp = sock.recv(16384)
+    except OSError as ex:
+        msg = ("Did not receive response from server."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(server_info["IP Address"],
+                                        server_info["Port"],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        return
+    else:
+        log.debug("Received {0} bytes".format(len(resp)))
+        resp = resp.decode('utf8')
+    finally:
+        log.debug("Closing socket")
+        sock.close()
 
     # Break the response down into its key/value pairs
     log.debug("Parsing message...")

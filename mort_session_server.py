@@ -239,12 +239,26 @@ def handle_socket_task(sock, remote_addr):
     log.debug("Starting up...")
 
     # Read out the message data
-    log.debug("Reading out request message...")
-    msg = sock.recv(16384)
-    log.debug("Received {0} bytes".format(len(msg)))
-    msg = msg.decode('utf8')
+    try:
+        log.debug("Reading out request message...")
+        sock.settimeout(5)
+        msg = sock.recv(16384)
+    except OSError as ex:
+        msg = ("Could not read request message from client."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(remote_addr[0],
+                                        remote_addr[1],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        return
+    else:
+        log.debug("Received {0} bytes".format(len(msg)))
+        msg = msg.decode('utf8')
 
-    # Break the response down into its key/value pairs
+    # Break the message down into its key/value pairs
     log.debug("Parsing message...")
     msg_lines = msg.splitlines()
     msg_fields = {}
@@ -252,8 +266,10 @@ def handle_socket_task(sock, remote_addr):
         msg_field = msg_line.split(':', 1)
         msg_fields[msg_field[0]] = msg_field[1]
 
-    # Check for the correct message type. If this isn't a list_active_sessions
-    # message then discard it and move on.
+    # Check for the existance of a msg_type field, and if one exists, decode
+    # it and carry out the requested operation.
+    # Prepare a response message if necessary.
+    resp = None
     if "msg_type" in msg_fields.keys():
         log.debug("Message type: {}".format(msg_fields["msg_type"]))
 
@@ -265,8 +281,6 @@ def handle_socket_task(sock, remote_addr):
             active_sessions_json = json.dumps(active_sessions)
             resp = ("msg_type:active_sessions_list\n"
                     "active_sessions:{0}\n".format(active_sessions_json))
-            log.debug("Sending response message...")
-            sock.sendall(resp.encode('utf8'))
 
         elif msg_fields["msg_type"] == "start_active_session":
             # Pull out the params to call vncserver with
@@ -305,8 +319,6 @@ def handle_socket_task(sock, remote_addr):
                 new_server.start()
                 resp = ("msg_type:start_active_session_response\n"
                         "outcome:success\n")
-            # Send the response back to the caller
-            sock.sendall(resp.encode('utf8'))
 
         elif msg_fields["msg_type"] == "kill_active_session":
             # Get the PID of the Xvnc process to kill from the message
@@ -329,8 +341,6 @@ def handle_socket_task(sock, remote_addr):
                     # Prepare response message for the client to explain this.
                     resp = ("msg_type:kill_active_session_response\n"
                             "outcome:process not found\n")
-                # Send the response back to the caller
-                sock.sendall(resp.encode('utf8'))
 
             else:
                 msg = ("Invalid message from {0}:{1}."
@@ -354,6 +364,23 @@ def handle_socket_task(sock, remote_addr):
                " Discarding".format(remote_addr[0],
                                     remote_addr[1]))
         log.warning(msg)
+
+    # If a response was generated, attempt to send it
+    try:
+        if resp is not None:
+            log.debug("Sending response message...")
+            sock.sendall(resp.encode('utf8'))
+    except OSError as ex:
+        msg = ("Could not send response message back to client."
+               " IP Address: {0}"
+               " Port: {1}"
+               " Error No: {2}"
+               " Error Msg: {3}".format(remote_addr[0],
+                                        remote_addr[1],
+                                        ex.errno,
+                                        ex.strerror))
+        log.critical(msg)
+        return
 
     # Close the socket as we are done with it.
     log.debug("Closing socket...")

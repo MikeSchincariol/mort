@@ -58,6 +58,7 @@ class ServerAnnounceTask(threading.Thread):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            self.sock.settimeout(5)
         except OSError as ex:
             msg = ("Unable to create broadcast socket."
                    " Error No: {0}"
@@ -72,22 +73,34 @@ class ServerAnnounceTask(threading.Thread):
         Then pauses a set amount of time before sending another message.
         """
         while True:
-            try:
-                # Send an announce message via broadcast if configured to
-                if self.use_broadcast_announce:
+            # Send an announce message via broadcast if configured to
+            if self.use_broadcast_announce:
+                try:
                     self.sock.sendto(self.msg.encode('utf8'), ("<broadcast>", 42124))
-                # Send an announce message via unicast if configured to.
-                if self.use_unicast_announce:
-                    for address in self.unicast_announce_hosts:
-                        self.sock.sendto(self.msg.encode('utf8'), (address, 42124))
+                except OSError as ex:
+                    msg = ("Unable to send broadcast announce message."
+                           " Error No: {0}"
+                           " Error Msg: {1}".format(ex.errno, ex.strerror))
+                    self.log.critical(msg)
 
-            except OSError as ex:
-                msg = ("Unable to send session-server announce message."
-                       " Error No: {0}"
-                       " Error Msg: {1}".format(ex.errno, ex.strerror))
-                self.log.critical(msg)
-            finally:
-                time.sleep(10)
+            # Send an announce message via unicast if configured to.
+            if self.use_unicast_announce:
+                for address in self.unicast_announce_hosts:
+                    try:
+                        self.sock.sendto(self.msg.encode('utf8'), (address, 42124))
+                    except OSError as ex:
+                        msg = ("Unable to send unicast announce message."
+                               " IP Address: {0}"
+                               " Port: {1}"
+                               " Error No: {2}"
+                               " Error Msg: {3}".format(address[0],
+                                                        address[1],
+                                                        ex.errno,
+                                                        ex.strerror))
+                        self.log.critical(msg)
+
+            # Sleep for a bit before announcing again
+            time.sleep(10)
 
 
 if __name__ == "__main__":

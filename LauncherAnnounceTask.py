@@ -57,14 +57,23 @@ class LauncherAnnounceTask(threading.Thread):
         """
         while True:
             # Wait for data to arrive on the announce_sock objectx
+            self.announce_sock.settimeout(None)
             robj, wobj, xobj = select.select([self.announce_sock], [], [])
 
             # Read the packet from the socket.
             # :NOTE: Since the announce_sock is the ONLY item in the call to select above,
             #        if we get to this point, we know it's because the announce_sock
             #        had data to read.
-            msg, remote_addr = self.announce_sock.recvfrom(4096)
-            msg = msg.decode('utf8')
+            try:
+                self.announce_sock.settimeout(5)
+                msg, remote_addr = self.announce_sock.recvfrom(4096)
+                msg = msg.decode('utf8')
+            except OSError as ex:
+                msg = ("Unable to read message from socket."
+                       " Error No: {0}"
+                       " Error Msg: {1}".format(ex.errno, ex.strerror))
+                self.log.critical(msg)
+                continue
 
             # Break the message down into its key/value pairs
             msg_lines = msg.splitlines()
