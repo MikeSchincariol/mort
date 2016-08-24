@@ -223,6 +223,32 @@ class ActiveSessionsWidget(object):
         else:
             pass
 
+    def get_display_numbers_in_use(self):
+        """
+        Returns a list of display numbers already in use by items in the
+        list of active-sessions.
+        :return:
+        """
+        self.log.debug("Retrieving list of display numbers in use...")
+        # A list to return to the caller
+        display_list = []
+        # Get the column names (note that Tk returns this as item 4
+        # in a weird 5-tuple structure)
+        cols = self.active_sessions_tv.configure("columns")[4]
+        # Determine which column index is holds the display number
+        display_number_idx = None
+        for idx, col in enumerate(cols):
+            if col.lower() == "display #":
+                display_number_idx = idx
+                break
+        # Iterate over all the items in the TreeView
+        for item in self.items_in_tv:
+            # Get the value of each column of the item
+            item_vals = self.active_sessions_tv.item(item)["values"]
+            # Extract the display number and add it to the list of display numbers
+            display_list.append(item_vals[display_number_idx])
+        return display_list
+
 
     def get_selected_item_info(self):
         """

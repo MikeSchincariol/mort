@@ -377,8 +377,18 @@ def new_active_session(active_sessions_widget):
         log.debug("Nothing to do. Returning early to caller.")
         return
 
+    # Get the next lowest available display that can be used and use it as
+    # the default when asking the user for the new VNC session parameters.
+    display_numbers_in_use = active_sessions_widget.get_display_numbers_in_use()
+    next_available_display = ""
+    for display_num in range(1, 1000):
+        if display_num not in display_numbers_in_use:
+            next_available_display = str(display_num)
+            break
+
     # Get the parameters of the new server to create
     form = NewVNCSessionForm.NewVNCSessionForm()
+    form.display_number.set(next_available_display)
     form.show()
     form_info = form.get_info()
 
