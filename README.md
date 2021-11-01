@@ -5,7 +5,7 @@ Capstone Project
 
 # _Mort - The VNC Session Helper_
 
-In Linux it is possible to start multiple additional desktop sessions, accessible remotely via TCP/IP, using a program called VNC. While running programs remotely is also possible using SSH, the advantage of VNC is that the session and programs continue even if the client disconnectxs. With SSH, any running processes started in the SSH session are terminated when the SSH session ends.  
+In Linux it is possible to start multiple additional desktop sessions, accessible remotely via TCP/IP, using a program called VNC. While running programs remotely is also possible using SSH, the advantage of VNC is that the session and programs continue even if the client disconnects. With SSH, any running processes started in the SSH session are terminated when the SSH session ends.  
 
 However, VNC has a few rough edges, among them:
 + It requires the user to select a display number to use, when starting the server. The display number must not be in use by any other VNC process. Available display numbers are difficult to determine.
