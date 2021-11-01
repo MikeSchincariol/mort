@@ -1,7 +1,5 @@
-*University of Washintong - Profressional and Continuing Education*
-
+*University of Washintong - Profressional and Continuing Education*  
 Certificate in Python Programming
-
 Capstone Project
 
 
