@@ -16,4 +16,4 @@ Mort attempts to solve these issues by:
 The app is written in Python using Tk for the GUI.
 Testing was done on an setup in an AWS VPC.
 
-Refer to the slide presentation located [here](../final_proj_presentation/mort.odp)
+Refer to the slide presentation located [here](./final_proj_presentation/mort.odp)
