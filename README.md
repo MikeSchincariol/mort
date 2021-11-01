@@ -1,3 +1,8 @@
+*University of Washintong - Profressional and Continuing Education*
+Certificate in Python Programming
+Capstone Project
+
+
 # Mort - The VNC Session Helper
 
 In Linux it is possible to start multiple additional desktop sessions, accessible remotely via TCP/IP, using a program called VNC. While running programs remotely is also possible using SSH, the advantage of VNC is that the session and programs continue even if the client disconnectxs. With SSH, any running processes started in the SSH session are terminated when the SSH session ends.  
@@ -16,4 +21,4 @@ Mort attempts to solve these issues by:
 The app is written in Python using Tk for the GUI.
 Testing was done on an setup in an AWS VPC.
 
-Refer to the slide presentation located [here](./final_proj_presentation/mort.odp)
+Download and review the slide presentation located [here](./final_proj_presentation/mort.odp) for more details.
