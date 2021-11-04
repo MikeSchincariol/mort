@@ -28,7 +28,7 @@ Download and review the slide presentation located [here](./final_proj_presentat
 Mort Servers - The servers that will host the VNC servers:
   1. Must have user accounts for all users that will start desktop sessions there:<br>
     + sudo useradd -m *username*
-    + sudo passwd *username*)
+    + sudo passwd *username*
   2. Must have a vnc server installed 
     + Consult your distributions package manager and package list to determine the package to install and how to install it
   3. Must have the vnc password set for each user (ideally, make it the same as their user account, but, this is not mandatory)
@@ -40,7 +40,7 @@ Mort Servers - The servers that will host the VNC servers:
       + UDB 42124-59000
       
   5. (Optional) Instead of creating firewall rules, you can disable the firewall
-      + sudo systemctl stop firewalld.service1
+      + sudo systemctl stop firewalld.service
       + sudo systemctl disable firewalld.service
           
   6. Clone the Mort git repo to each server
