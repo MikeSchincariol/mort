@@ -27,21 +27,21 @@ Download and review the slide presentation located [here](./final_proj_presentat
 
 Mort Servers - The servers that will host the VNC servers:
   1. Must have user accounts for all users that will start desktop sessions there:<br>
-    + sudo useradd -m *username*
-    + sudo passwd *username*
+    + sudo useradd -m *username*<br>
+    + sudo passwd *username*<br>
   2. Must have a vnc server installed 
     + Consult your distributions package manager and package list to determine the package to install and how to install it
   3. Must have the vnc password set for each user (ideally, make it the same as their user account, but, this is not mandatory)
-      + su *username*
-      + vncpassword
+      + su *username*<br>
+      + vncpassword<br>
   4. Must have the firewall configured to allow Mort and VNC related inbound connections
-      + TCP 5900-6900
-      + TCP 42124-59000
-      + UDB 42124-59000
+      + TCP 5900-6900<br>
+      + TCP 42124-59000<br>
+      + UDB 42124-59000<br>
       
   5. (Optional) Instead of creating firewall rules, you can disable the firewall
-      + sudo systemctl stop firewalld.service
-      + sudo systemctl disable firewalld.service
+      + sudo systemctl stop firewalld.service<br>
+      + sudo systemctl disable firewalld.service<br>
           
   6. Clone the Mort git repo to each server
   7. Configure the server.ini file inside the Mort git repo
@@ -52,8 +52,8 @@ Mort Servers - The servers that will host the VNC servers:
 Mort Launcher - this is the user's machine
   1. Clone the Mort git repo to the machine
   2. Install additional dependencies
-   + Python Tk library (usually via distrobution specific package manager)
-   + Python Pillow library (usually via pip3)
+   + Python Tk library (usually via distrobution specific package manager)<br>
+   + Python Pillow library (usually via pip3)<br>
  
        
 # Running
